@@ -1,0 +1,23 @@
+{
+  "name": "backmacro",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test/game.js",
+    "watch-test": "nodemon --exec node test/game.js",
+    "watch-start": "nodemon --exec node server.js",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.4",
+    "express": "^4.16.3",
+    "node-firebird": "^0.8.6",
+    "socket.io": "^2.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.3"
+  }
+}
