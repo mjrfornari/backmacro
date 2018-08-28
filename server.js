@@ -1,6 +1,5 @@
 // create server connection
 
-
 const optionsfb = {
     host: 'servidor',
     port: 3050,
@@ -19,27 +18,30 @@ let cors = require('cors')
 let io = require('socket.io')(http)
 let port = process.env.PORT || 3001
 let Firebird = require('node-firebird');
+let CryptoJS = require('crypto-js');
+const { StringDecoder } = require('string_decoder');
+const decoder = new StringDecoder('utf8');
+
 
 app.get('/', function(req, res){
     res.sendFile(__dirname + '/testClient.html')
 })
 
-let retornaSQL = searchsql => {
-    Firebird.attach(optionsfb, function(err, db) {
-                if (err)
-                    throw err;
-            
-                // db = DATABASE                         
 
-                db.query('SELECT * FROM CONJUNTOS', function(err, result) {
-                    // IMPORTANT: close the connection
-                    let sql = result
-                    db.detach();
-                    return sql
-                });
-            
-    });    
+
+function ab2str(buf) {
+  return String.fromCharCode.apply(null, new Uint16Array(buf));
 }
+
+function str2ab(str) {
+  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
+  var bufView = new Uint16Array(buf);
+  for (var i=0, strLen=str.length; i<strLen; i++) {
+    bufView[i] = str.charCodeAt(i);
+  }
+  return buf;
+}
+
 
 let corsOptions = {
   origin: 'http://localhost:3000',
@@ -47,8 +49,65 @@ let corsOptions = {
 }
 
 app.get('/user', cors(corsOptions), function (req, res, next) {
-     res.json({retornaSQL})
+    
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;
+        // db = DATABASE                         
 
+        db.query('SELECT pk_cli, cast(razao_social as varchar(50) character SET UTF8) razao_social FROM clientes', function(err, result) {
+            // IMPORTANT: close the connection
+      
+            
+            db.detach();
+            res.json(result)
+        });
+
+    });
+///////////////////////////////////////////////////////////
+
+
+})
+
+app.get('/login/:user/:password', cors(corsOptions), function (req, res, next) {
+    
+    let crypto = CryptoJS.MD5(req.params['password'])
+    let senha = crypto.toString()
+    senha = senha.slice(0,19)
+
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;
+        // db = DATABASE                         
+        if  (req.params['user'].length == 11) {
+
+            let sql = 'SELECT PK_VEN FROM VENDEDORES where CPF=' +db.escape(req.params['user'])+' and senha='+db.escape(senha);
+
+            db.query(sql, function(err, result) {
+            // IMPORTANT: close the connection
+      
+            console.log('cpf')
+            console.log(result) 
+            db.detach();
+            res.json(result)
+        });}
+        else if  (req.params['user'].length == 14) {
+            let sql = 'SELECT PK_VEN FROM VENDEDORES where CNPJ=' +db.escape(req.params['user'])+' and senha='+db.escape(senha);
+            
+            db.query(sql, function(err, result) {
+            // IMPORTANT: close the connection
+      
+            console.log('cnpj') 
+            console.log(result)           
+            db.detach();
+            res.json(result)
+        });
+        } else {res.json([])
+        db.detach();}
+    });
+    
+    
+   
 
 })
 
@@ -56,6 +115,9 @@ app.get('/user', cors(corsOptions), function (req, res, next) {
 // app.get('/user', function(req, res){
 //     res.status(200).json({ vai: 'funcionou' })
 // })
+
+
+
 
 io.on('connection', function(socket){
     let game = Game()
