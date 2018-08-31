@@ -2,7 +2,7 @@
 
 const optionsfb = {
     // host: 'servidor',
-    host: 'http://187.44.93.73',
+    host: '187.44.93.73',
     port: 3050,
     // database: 'C:/delphus/delphus/BancosFB/Projeto Macropecas Web/DADOS.FDB',
     database: 'D:/Projetos/Mohva/Macropecas/Banco/DADOS.FDB',
