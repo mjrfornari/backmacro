@@ -1,16 +1,14 @@
 // create server connection
 
 const optionsfb = {
-    // host: 'servidor',
-    host: '187.44.93.73',
+    host: 'servidor',
     port: 3050,
-    // database: 'C:/delphus/delphus/BancosFB/Projeto Macropecas Web/DADOS.FDB',
-    database: 'C:/delphus/dados/DADOS.FDB',
+    database: 'C:/delphus/delphus/BancosFB/Projeto Macropecas Web/DADOS.FDB',
     user: 'SYSDBA',
     password: 'masterkey',
     lowercase_keys: false, // set to true to lowercase keys
     role: null,            // default
-    pageSize: 8192       // default when creating database
+    pageSize: 16384       // default when creating database
 }
 
 const Game = require('./game.js').HigherOrder
@@ -46,7 +44,7 @@ function str2ab(str) {
 
 
 let corsOptions = {
-  origin: 'https://delphustest.herokuapp.com',
+  origin: 'http://localhost:3000',
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 }
 
