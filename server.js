@@ -1,7 +1,8 @@
 // create server connection
 
 const optionsfb = {
-    host: 'servidor',
+    // host: 'servidor',
+    host: '189.6.232.81',
     port: 3050,
     database: 'C:/delphus/delphus/BancosFB/Projeto Macropecas Web/DADOS.FDB',
     user: 'SYSDBA',
@@ -44,7 +45,7 @@ function str2ab(str) {
 
 
 let corsOptions = {
-  origin: 'http://localhost:3000',
+  origin: 'https://delphustest.herokuapp.com/',
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 }
 
