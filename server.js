@@ -2,14 +2,15 @@
 
 const optionsfb = {
     // host: 'servidor',
-    host: '189.6.232.81',
+    host: 'http://187.44.93.73',
     port: 3050,
-    database: 'C:/delphus/delphus/BancosFB/Projeto Macropecas Web/DADOS.FDB',
+    // database: 'C:/delphus/delphus/BancosFB/Projeto Macropecas Web/DADOS.FDB',
+    database: 'D:/Projetos/Mohva/Macropecas/Banco/DADOS.FDB',
     user: 'SYSDBA',
     password: 'masterkey',
     lowercase_keys: false, // set to true to lowercase keys
     role: null,            // default
-    pageSize: 16384       // default when creating database
+    pageSize: 8192       // default when creating database
 }
 
 const Game = require('./game.js').HigherOrder
