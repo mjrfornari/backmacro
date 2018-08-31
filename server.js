@@ -5,7 +5,7 @@ const optionsfb = {
     host: '187.44.93.73',
     port: 3050,
     // database: 'C:/delphus/delphus/BancosFB/Projeto Macropecas Web/DADOS.FDB',
-    database: 'D:/Projetos/Mohva/Macropecas/Banco/DADOS.FDB',
+    database: 'C:/delphus/dados/DADOS.FDB',
     user: 'SYSDBA',
     password: 'masterkey',
     lowercase_keys: false, // set to true to lowercase keys
