@@ -46,7 +46,7 @@ function str2ab(str) {
 
 
 let corsOptions = {
-  origin: 'https://delphustest.herokuapp.com/',
+  origin: 'https://delphustest.herokuapp.com',
   optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 }
 
