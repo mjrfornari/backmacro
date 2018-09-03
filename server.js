@@ -43,19 +43,29 @@ function str2ab(str) {
 }
 
 
-let corsOptions = {
-  origin: 'http://localhost:3000',
-  optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
+var whitelist = ['http://192.168.0.251:3000', 'http://localhost:3000']
+var corsOptions = {
+  origin: function (origin, callback) {
+    if (whitelist.indexOf(origin) !== -1) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  }
 }
 
-app.get('/user', cors(corsOptions), function (req, res, next) {
+
+app.get('/clientes', cors(corsOptions), function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
             throw err;
         // db = DATABASE                         
 
-        db.query('SELECT pk_cli, cast(razao_social as varchar(50) character SET UTF8) razao_social FROM clientes', function(err, result) {
+        db.query('SELECT pk_cli, cast(codigo_representada as varchar(20) character SET UTF8) codigo_representada,'+ 
+        'cast(razao_social as varchar(50) character SET UTF8) razao_social, cast(cnpj as varchar(14) character SET UTF8) cnpj,'+
+        'cast(fone1 as varchar(20) character SET UTF8) fone1 '+
+        'FROM clientes', function(err, result) {
             // IMPORTANT: close the connection
       
             
