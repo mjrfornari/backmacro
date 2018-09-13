@@ -74,10 +74,73 @@ app.get('/clientes', cors(corsOptions), function (req, res, next) {
         });
 
     });
-///////////////////////////////////////////////////////////
-
-
 })
+
+app.get('/produtos', cors(corsOptions), function (req, res, next) {
+    
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;
+        // db = DATABASE                         
+        let sql = 'SELECT pk_pro, cast(codigo_representada as varchar(20) character SET UTF8) codigo_representada, cast(codigo_macropecas as varchar(20) character SET UTF8) codigo_macropecas,cast(nome_macropecas as varchar(100) character SET UTF8) nome_macropecas '+
+        'FROM produtos where ativo='+db.escape("S");
+        console.log(sql)
+        db.query(sql, function(err, result) {
+            // IMPORTANT: close the connection
+      
+            console.log(result) 
+            db.detach();
+            res.json(result)
+        });
+
+    });
+})
+
+app.get('/asdd', cors(corsOptions), function (req, res, next) {
+    
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;
+        // db = DATABASE                         
+
+        db.query('SELECT pk_cli, cast(codigo_representada as varchar(20) character SET UTF8) codigo_representada,'+ 
+        'cast(razao_social as varchar(50) character SET UTF8) razao_social, cast(cnpj as varchar(14) character SET UTF8) cnpj,'+
+        'cast(fone1 as varchar(20) character SET UTF8) fone1 '+
+        'FROM clientes', function(err, result) {
+            // IMPORTANT: close the connection
+      
+            
+            db.detach();
+            res.json(result)
+        });
+
+    });
+})
+
+app.get('/asd', cors(corsOptions), function (req, res, next) {
+    
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;
+        // db = DATABASE                         
+
+        db.query('SELECT pk_cli, cast(codigo_representada as varchar(20) character SET UTF8) codigo_representada,'+ 
+        'cast(razao_social as varchar(50) character SET UTF8) razao_social, cast(cnpj as varchar(14) character SET UTF8) cnpj,'+
+        'cast(fone1 as varchar(20) character SET UTF8) fone1 '+
+        'FROM clientes', function(err, result) {
+            // IMPORTANT: close the connection
+      
+            
+            db.detach();
+            res.json(result)
+        });
+
+    });
+
+///////////////////////////////////////////////////////////
+})
+
+
 
 app.get('/login/:user/:password', cors(corsOptions), function (req, res, next) {
     
