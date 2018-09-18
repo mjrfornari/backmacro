@@ -55,7 +55,7 @@ var corsOptions = {
 }
 
 
-app.get('/clientes', cors(corsOptions), function (req, res, next) {
+app.get('/clientes/:user', cors(corsOptions), function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -65,7 +65,7 @@ app.get('/clientes', cors(corsOptions), function (req, res, next) {
         db.query('SELECT pk_cli, cast(codigo_representada as varchar(20) character SET UTF8) codigo_representada,'+ 
         'cast(razao_social as varchar(50) character SET UTF8) razao_social, cast(cnpj as varchar(14) character SET UTF8) cnpj,'+
         'cast(fone1 as varchar(20) character SET UTF8) fone1 '+
-        'FROM clientes', function(err, result) {
+        'FROM clientes WHERE FK_VEN='+db.escape(req.params['user'])+' or FK_VEN2='+db.escape(req.params['user']), function(err, result) {
             // IMPORTANT: close the connection
       
             
