@@ -73,6 +73,86 @@ app.get('/clientes/:user', cors(corsOptions), function (req, res, next) {
             res.json(result)
         });
 
+        
+        // db.query('SELECT * '+'FROM clientes WHERE FK_VEN='+db.escape(req.params['user'])+' or FK_VEN2='+db.escape(req.params['user']), function(err, result) {
+        //     // IMPORTANT: close the connection
+      
+            
+        //     db.detach();
+        //     res.json(result)
+        // });
+
+    });
+})
+
+
+
+app.get('/gerapk/:nomepk', cors(corsOptions), function (req, res, next) {
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;
+         db.query('update controle set valor=(valor+1) where campo = '+db.escape(req.params['nomepk']), function(err, result) {
+            // IMPORTANT: close the connection
+            // console.log(result)
+            db.query('select valor from controle where campo = '+db.escape(req.params['nomepk']), function(err, result) {
+                // IMPORTANT: close the connection
+                console.log(result)
+                res.json(result)
+                db.detach();
+            });
+            
+        });
+    });
+})
+
+
+app.get('/criaitem/:table/:fields/:values', cors(corsOptions), function (req, res, next) {
+    Firebird.attach(optionsfb, function(err, db) {
+        let sql = 'INSERT INTO '+req.params['table']+' ('+req.params['fields'];
+        sql = sql+') values ('+req.params['values']+')';
+        console.log(sql)
+        if (err)
+            throw err;
+        db.query(sql, function(err, result) {
+                res.json(result)
+                db.detach();
+        });
+            
+    });
+});
+
+app.get('/atualizaitem/:table/:fieldsnvalues/:where', cors(corsOptions), function (req, res, next) {
+    Firebird.attach(optionsfb, function(err, db) {
+        let sql = 'UPDATE '+req.params['table']+' SET '+req.params['fieldsnvalues'];
+        sql = sql+' WHERE '+req.params['where'];
+        console.log(sql)
+        if (err)
+            throw err;
+        db.query(sql, function(err, result) {
+                res.json(result)
+                db.detach();
+        });
+            
+    });
+});
+
+
+app.get('/create/:command', cors(corsOptions), function (req, res, next) {
+    console.log('entrou')
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;
+         db.query('update controle set valor=(valor+1) where campo = '+db.escape('PK_CLI'), function(err, result) {
+            // IMPORTANT: close the connection
+            console.log(result)
+            db.query('select valor from controle where campo = '+db.escape('PK_CLI'), function(err, result) {
+                // IMPORTANT: close the connection
+                console.log(result)
+                res.json(result)
+                db.detach();
+            });
+            
+        });
     });
 })
 
@@ -134,6 +214,8 @@ app.get('/asd', cors(corsOptions), function (req, res, next) {
             db.detach();
             res.json(result)
         });
+
+    
 
     });
 
