@@ -59,8 +59,7 @@ app.get('/clientes/:user', cors(corsOptions), function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
-            throw err;
-        // db = DATABASE                         
+            throw err;                        
 
         db.query('SELECT pk_cli, cast(codigo_representada as varchar(20) character SET UTF8) codigo_representada,'+ 
         'cast(razao_social as varchar(50) character SET UTF8) razao_social, cast(cnpj as varchar(14) character SET UTF8) cnpj,'+
@@ -73,14 +72,34 @@ app.get('/clientes/:user', cors(corsOptions), function (req, res, next) {
             res.json(result)
         });
 
-        
-        // db.query('SELECT * '+'FROM clientes WHERE FK_VEN='+db.escape(req.params['user'])+' or FK_VEN2='+db.escape(req.params['user']), function(err, result) {
-        //     // IMPORTANT: close the connection
+    });
+})
+
+app.get('/pedidos/:user', cors(corsOptions), function (req, res, next) {
+    
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;                        
+
+        let sql = 'select PED.PK_PED, PED.NRO_MACROPECAS, PED.FK_CLI, CLI.RAZAO_SOCIAL, PED.FK_CPG, CPG.NOME NOMECPG, '+
+                'PED.DATA, PED.VALOR_CALCULADO, PED.VALOR_INFORMADO, cast(PED.OBSERVACAO as varchar(5000) character SET UTF8), '+
+                'cast(PED.ORCAMENTO as char(1) character SET UTF8), PED.DATA_ENVIO, PED.NUMPED, PED.NUMORC, '+
+                'cast(PED.ENVIADO as char(1) character SET UTF8), cast(PED.IMPORTACAO as char(1) character SET UTF8),'+
+                'cast(PED.STATUS as char(1) character SET UTF8), cast(PED.WEB as char(1) character SET UTF8),'+
+                'PED.DESCONTO1, PED.DESCONTO2, PED.DESCONTO3 '+
+                'from PEDIDOS_VENDA PED '+
+                'join CLIENTES CLI on CLI.PK_CLI = PED.FK_CLI '+
+                'join COND_PAG CPG on CPG.PK_CPG = PED.FK_CPG '+
+                'WHERE PED.FK_VEN='+db.escape(req.params['user']);
+        console.log(sql)
+
+        db.query(sql, function(err, result) {
+            // IMPORTANT: close the connection
       
-            
-        //     db.detach();
-        //     res.json(result)
-        // });
+            console.log(result)
+            db.detach();
+            res.json(result)
+        });
 
     });
 })
