@@ -104,6 +104,54 @@ app.get('/pedidos/:user', cors(corsOptions), function (req, res, next) {
     });
 })
 
+app.get('/itepedidos/:pedido', cors(corsOptions), function (req, res, next) {
+    
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;                        
+
+        let sql = 'select IPE.PK_IPE, IPE.FK_PRO, cast(PRO.CODIGO_MACROPECAS as varchar(20) character SET UTF8) CODIGOPRO, IPE.QUANTIDADE, IPE.VALOR, IPE.DESCONTO1, IPE.DESCONTO2, IPE.DESCONTO3, '+
+                'cast(IPE.OBSERVACAO as varchar(100) character SET UTF8), IPE.CONTROLE, IPE.PERC_STICMS, IPE.VALOR_STICMS '+
+                'from ITENS_PED_VENDA IPE '+
+                'join PRODUTOS PRO on PRO.PK_PRO = IPE.FK_PRO '+
+                'WHERE IPE.FK_PED='+db.escape(req.params['pedido']);
+        console.log(sql)
+
+        db.query(sql, function(err, result) {
+            // IMPORTANT: close the connection
+      
+            console.log(result)
+            db.detach();
+            res.json(result)
+        });
+
+    });
+})
+
+
+app.get('/cpg', cors(corsOptions), function (req, res, next) {
+    
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;                        
+
+        let sql = 'select CPG.PK_CPG, cast(CPG.NOME as varchar(50) character SET UTF8) NOME, CPG.DESCONTO, cast(CPG.CODIGO_REPRESENTADA as varchar(50) character SET UTF8) CODIGO_REPRESENTADA, '+
+                'cast(CPG.BLOQ_FIN as char(1) character SET UTF8) BLOQ_FIN '+
+                'from COND_PAG CPG '+
+                'WHERE CPG.INATIVO='+db.escape('N');
+        console.log(sql)
+
+        db.query(sql, function(err, result) {
+            // IMPORTANT: close the connection
+      
+            console.log(result)
+            db.detach();
+            res.json(result)
+        });
+
+    });
+})
+
 
 
 app.get('/gerapk/:nomepk', cors(corsOptions), function (req, res, next) {
