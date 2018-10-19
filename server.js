@@ -11,6 +11,17 @@ const optionsfb = {
     pageSize: 16384       // default when creating database
 }
 
+// const optionsfb = {
+//     host: '187.44.93.73',
+//     port: 3050,
+//     database: 'C:/react/dados/DADOS.FDB',
+//     user: 'SYSDBA',
+//     password: 'masterkey',
+//     lowercase_keys: false, // set to true to lowercase keys
+//     role: null,            // default
+//     pageSize: 16384       // default when creating database
+// }
+
 const Game = require('./game.js').HigherOrder
 let app = require('express')()
 let http = require('http').Server(app)
@@ -43,7 +54,7 @@ function str2ab(str) {
 }
 
 
-var whitelist = ['http://192.168.0.251:3000', 'http://localhost:3000']
+var whitelist = ['http://192.168.0.251:3000', 'http://localhost:3000', '*']
 var corsOptions = {
   origin: function (origin, callback) {
     if (whitelist.indexOf(origin) !== -1) {
@@ -68,6 +79,25 @@ app.get('/clientes/:user', cors(corsOptions), function (req, res, next) {
         'trim(cast(BAIRRO as varchar(50) character SET UTF8)) BAIRRO, trim(cast(CEP as char(8) character SET UTF8)) CEP, trim(cast(COMPLEMENTO as varchar(20) character SET UTF8)) COMPLEMENTO, '+
         'FK_CID, DDD1, DDD2, trim(cast(FONE2 as varchar(20) character SET UTF8)) FONE2, trim(cast(EMAIL as varchar(40) character SET UTF8)) EMAIL, trim(cast(EMAIL_FINANCEIRO as varchar(100) character SET UTF8)) EMAIL_FINANCEIRO '+
         'FROM clientes WHERE FK_VEN='+db.escape(req.params['user'])+' or FK_VEN2='+db.escape(req.params['user']), function(err, result) {
+            // IMPORTANT: close the connection
+      
+            
+            db.detach();
+            res.json(result)
+        });
+
+    });
+})
+
+
+
+app.get('/cidades', cors(corsOptions), function (req, res, next) {
+    
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;                        
+
+        db.query('SELECT FROM', function(err, result) {
             // IMPORTANT: close the connection
       
             
