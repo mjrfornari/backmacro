@@ -115,10 +115,10 @@ app.get('/pedidos/:user', cors(corsOptions), function (req, res, next) {
             throw err;                        
 
         let sql = 'select PED.PK_PED, PED.NRO_MACROPECAS, PED.FK_CLI, CLI.RAZAO_SOCIAL, PED.FK_CPG, CPG.NOME NOMECPG, '+
-                'PED.DATA, PED.VALOR_CALCULADO, PED.VALOR_INFORMADO, trim(cast(PED.OBSERVACAO as varchar(5000) character SET UTF8)), '+
-                'trim(cast(PED.ORCAMENTO as char(1) character SET UTF8)), cast(PED.DATA_ENVIO as date) DATA_ENVIO, PED.NUMPED, PED.NUMORC, '+
-                'trim(cast(PED.ENVIADO as char(1) character SET UTF8)), trim(cast(PED.IMPORTACAO as char(1) character SET UTF8)),'+
-                'trim(cast(PED.STATUS as char(1) character SET UTF8)), trim(cast(PED.WEB as char(1) character SET UTF8)),'+
+                'PED.DATA, PED.VALOR_CALCULADO, PED.VALOR_INFORMADO, trim(cast(PED.OBSERVACAO as varchar(5000) character SET UTF8)) OBSERVACAO, '+
+                'trim(cast(PED.ORCAMENTO as char(1) character SET UTF8)) ORCAMENTO, cast(PED.DATA_ENVIO as date) DATA_ENVIO, PED.NUMPED, PED.NUMORC, '+
+                'trim(cast(PED.ENVIADO as char(1) character SET UTF8)) ENVIADO, trim(cast(PED.IMPORTACAO as char(1) character SET UTF8)) IMPORTACAO,'+
+                'trim(cast(PED.STATUS as char(1) character SET UTF8)) STATUS, trim(cast(PED.WEB as char(1) character SET UTF8)) WEB,'+
                 'PED.DESCONTO1, PED.DESCONTO2, PED.DESCONTO3 '+
                 'from PEDIDOS_VENDA PED '+
                 'join CLIENTES CLI on CLI.PK_CLI = PED.FK_CLI '+
