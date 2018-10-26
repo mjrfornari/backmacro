@@ -11,6 +11,18 @@ const optionsfb = {
     pageSize: 16384       // default when creating database
 }
 
+
+// const optionsfb = {
+//     host: '192.168.0.254',
+//     port: 3050,
+//     database: 'C:/react/dados/DADOS.FDB',
+//     user: 'SYSDBA',
+//     password: 'masterkey',
+//     lowercase_keys: false, // set to true to lowercase keys
+//     role: null,            // default
+//     pageSize: 16384       // default when creating database
+// }
+
 // const optionsfb = {
 //     host: '187.44.93.73',
 //     port: 3050,
@@ -77,10 +89,28 @@ app.get('/clientes/:user', cors(corsOptions), function (req, res, next) {
         'trim(cast(fone1 as varchar(20) character SET UTF8)) fone1, trim(cast(INSCRICAO_ESTADUAL as varchar(20) character SET UTF8)) INSCRICAO_ESTADUAL, trim(cast(INSCRICAO_MUNICIPAL as varchar(20) character SET UTF8)) INSCRICAO_MUNICIPAL, '+
         'trim(cast(SUFRAMA as varchar(20) character SET UTF8)) SUFRAMA, trim(cast(ENDERECO as varchar(100) character SET UTF8)) ENDERECO, trim(cast(NUMERO as varchar(20) character SET UTF8)) NUMERO, '+
         'trim(cast(BAIRRO as varchar(50) character SET UTF8)) BAIRRO, trim(cast(CEP as char(8) character SET UTF8)) CEP, trim(cast(COMPLEMENTO as varchar(20) character SET UTF8)) COMPLEMENTO, '+
-        'FK_CID, DDD1, DDD2, trim(cast(FONE2 as varchar(20) character SET UTF8)) FONE2, trim(cast(EMAIL as varchar(40) character SET UTF8)) EMAIL, trim(cast(EMAIL_FINANCEIRO as varchar(100) character SET UTF8)) EMAIL_FINANCEIRO '+
-        'FROM clientes WHERE FK_VEN='+db.escape(req.params['user'])+' or FK_VEN2='+db.escape(req.params['user']), function(err, result) {
+        'FK_CID, DDD1, DDD2,'+campoVarChar('SIMPLESNACIONAL', 1)+', trim(cast(FONE2 as varchar(20) character SET UTF8)) FONE2, trim(cast(EMAIL as varchar(40) character SET UTF8)) EMAIL, trim(cast(EMAIL_FINANCEIRO as varchar(100) character SET UTF8)) EMAIL_FINANCEIRO '+
+        'FROM clientes WHERE FK_VEN='+db.escape(req.params['user'])+' or FK_VEN2='+db.escape(req.params['user'])+ ' order by RAZAO_SOCIAL', function(err, result) {
             // IMPORTANT: close the connection
       
+            
+            db.detach();
+            res.json(result)
+        });
+
+    });
+})
+
+app.get('/descontolog', cors(corsOptions), function (req, res, next) {
+
+    Firebird.attach(optionsfb, function(err, db) {
+        if (err)
+            throw err;                        
+
+        db.query('select pk_des, mes, ano, '+campoDate('data_limite')+', desconto '
+        +'from desconto_logistico', function(err, result) {
+            // IMPORTANT: close the connection
+            console.log(result)
             
             db.detach();
             res.json(result)
@@ -97,7 +127,8 @@ app.get('/cidades', cors(corsOptions), function (req, res, next) {
         if (err)
             throw err;                        
 
-        db.query('SELECT FROM', function(err, result) {
+        db.query('select cid.pk_cid, trim(cast(cid.nome as varchar(30) character SET UTF8)) NOMECIDADE, cid.FK_EST, trim(cast(est.nome as varchar(30) character SET UTF8)) NOMEESTADO, trim(cast(est.sigla as varchar(2) character SET UTF8)) UF from cidade cid '
+        +'left join estado est on cid.fk_est = est.pk_est', function(err, result) {
             // IMPORTANT: close the connection
       
             
@@ -107,6 +138,7 @@ app.get('/cidades', cors(corsOptions), function (req, res, next) {
 
     });
 })
+
 
 app.get('/pedidos/:user', cors(corsOptions), function (req, res, next) {
     
@@ -222,7 +254,7 @@ app.get('/cpg', cors(corsOptions), function (req, res, next) {
 
         let sql = 'select CPG.PK_CPG, trim(cast(CPG.NOME as varchar(50) character SET UTF8)) NOME, CPG.DESCONTO, trim(cast(CPG.CODIGO_REPRESENTADA as varchar(50) character SET UTF8)) CODIGO_REPRESENTADA, '+
                 ' trim(cast(CPG.BLOQ_FIN as char(1) character SET UTF8)) BLOQ_FIN, trim(cast(CPG.INATIVO as char(1) character SET UTF8)) INATIVO '+
-                'from COND_PAG CPG ';
+                'from COND_PAG CPG where cpg.INATIVO <> '+db.escape('S');
         // console.log(sql)
 
         db.query(sql, function(err, result) {
