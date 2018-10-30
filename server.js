@@ -146,7 +146,7 @@ app.get('/pedidos/:user', cors(corsOptions), function (req, res, next) {
         if (err)
             throw err;                        
 
-        let sql = 'select PED.PK_PED, PED.NRO_MACROPECAS, PED.FK_CLI, CLI.RAZAO_SOCIAL, PED.FK_CPG, CPG.NOME NOMECPG, '+
+        let sql = 'select PED.PK_PED, PED.NRO_MACROPECAS, PED.NUMWEB, PED.FK_CLI, PED.FK_REP, PED.VALOR_IPI, PED.VALOR_ST, CLI.RAZAO_SOCIAL, PED.FK_CPG, CPG.NOME NOMECPG, '+
                 'PED.DATA, PED.VALOR_CALCULADO, PED.VALOR_INFORMADO, trim(cast(PED.OBSERVACAO as varchar(5000) character SET UTF8)) OBSERVACAO, '+
                 'trim(cast(PED.ORCAMENTO as char(1) character SET UTF8)) ORCAMENTO, cast(PED.DATA_ENVIO as date) DATA_ENVIO, PED.NUMPED, PED.NUMORC, '+
                 'trim(cast(PED.ENVIADO as char(1) character SET UTF8)) ENVIADO, trim(cast(PED.IMPORTACAO as char(1) character SET UTF8)) IMPORTACAO,'+
@@ -155,7 +155,7 @@ app.get('/pedidos/:user', cors(corsOptions), function (req, res, next) {
                 'from PEDIDOS_VENDA PED '+
                 'join CLIENTES CLI on CLI.PK_CLI = PED.FK_CLI '+
                 'join COND_PAG CPG on CPG.PK_CPG = PED.FK_CPG '+
-                'WHERE PED.FK_VEN='+db.escape(req.params['user']);
+                'WHERE PED.FK_VEN='+db.escape(req.params['user'])+' AND DATA>'+db.escape('2018-10-29');
         // console.log(sql)
 
         db.query(sql, function(err, result) {
@@ -228,7 +228,7 @@ app.get('/itepedidos/:pedido', cors(corsOptions), function (req, res, next) {
             throw err;                        
 
         let sql = 'select IPE.PK_IPE, IPE.FK_PRO, trim(cast(PRO.CODIGO_MACROPECAS as varchar(20) character SET UTF8)) CODIGOPRO, IPE.QUANTIDADE, IPE.VALOR, IPE.DESCONTO1, IPE.DESCONTO2, IPE.DESCONTO3, '+
-                'trim(cast(IPE.OBSERVACAO as varchar(100) character SET UTF8)), IPE.CONTROLE, IPE.PERC_STICMS, IPE.VALOR_STICMS, (IPE.QUANTIDADE*IPE.VALOR*(IPE.DESCONTO1/100)) as TOTAL '+
+                'trim(cast(IPE.OBSERVACAO as varchar(100) character SET UTF8)) OBSERVACAO, IPE.CONTROLE, IPE.IPI, IPE.PERC_STICMS, IPE.VALOR_STICMS, (IPE.QUANTIDADE*IPE.VALOR*(IPE.DESCONTO1/100)) as TOTAL '+
                 'from ITENS_PED_VENDA IPE '+
                 'join PRODUTOS PRO on PRO.PK_PRO = IPE.FK_PRO '+
                 'WHERE IPE.FK_PED='+db.escape(req.params['pedido']);
