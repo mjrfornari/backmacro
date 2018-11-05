@@ -1,15 +1,15 @@
 // create server connection
 
-const optionsfb = {
-    host: 'servidor',
-    port: 3050,
-    database: 'C:/delphus/delphus/BancosFB/Projeto Macropecas Web/DADOS.FDB',
-    user: 'SYSDBA',
-    password: 'masterkey',
-    lowercase_keys: false, // set to true to lowercase keys
-    role: null,            // default
-    pageSize: 16384       // default when creating database
-}
+// const optionsfb = {
+//     host: 'servidor',
+//     port: 3050,
+//     database: 'C:/delphus/delphus/BancosFB/Projeto Macropecas Web/DADOS.FDB',
+//     user: 'SYSDBA',
+//     password: 'masterkey',
+//     lowercase_keys: false, // set to true to lowercase keys
+//     role: null,            // default
+//     pageSize: 16384       // default when creating database
+// }
 
 
 // const optionsfb = {
@@ -23,23 +23,20 @@ const optionsfb = {
 //     pageSize: 16384       // default when creating database
 // }
 
-// const optionsfb = {
-//     host: '187.44.93.73',
-//     port: 3050,
-//     database: 'C:/react/dados/DADOS.FDB',
-//     user: 'SYSDBA',
-//     password: 'masterkey',
-//     lowercase_keys: false, // set to true to lowercase keys
-//     role: null,            // default
-//     pageSize: 16384       // default when creating database
-// }
+const optionsfb = {
+    host: '187.44.93.73',
+    port: 3050,
+    database: 'C:/react/dados/DADOS.FDB',
+    user: 'SYSDBA',
+    password: 'masterkey',
+    lowercase_keys: false, // set to true to lowercase keys
+    role: null,            // default
+    pageSize: 16384       // default when creating database
+}
 
-const Game = require('./game.js').HigherOrder
 let app = require('express')()
 let http = require('http').Server(app)
-let cors = require('cors')
-let io = require('socket.io')(http)
-let port = process.env.PORT || 3001
+let port = process.env.PORT || 443
 let Firebird = require('node-firebird');
 let CryptoJS = require('crypto-js');
 const { StringDecoder } = require('string_decoder');
@@ -78,7 +75,7 @@ var corsOptions = {
 }
 
 
-app.get('/clientes/:user', cors(corsOptions), function (req, res, next) {
+app.get('/clientes/:user',  function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -101,7 +98,7 @@ app.get('/clientes/:user', cors(corsOptions), function (req, res, next) {
     });
 })
 
-app.get('/descontolog', cors(corsOptions), function (req, res, next) {
+app.get('/descontolog',  function (req, res, next) {
 
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -120,7 +117,7 @@ app.get('/descontolog', cors(corsOptions), function (req, res, next) {
 
 
 
-app.get('/cidades', cors(corsOptions), function (req, res, next) {
+app.get('/cidades',  function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -139,7 +136,7 @@ app.get('/cidades', cors(corsOptions), function (req, res, next) {
 })
 
 
-app.get('/pedidos/:user', cors(corsOptions), function (req, res, next) {
+app.get('/pedidos/:user',  function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -178,7 +175,7 @@ function campoDate (campo){
     return x
 }
 
-app.get('/produtos', cors(corsOptions), function (req, res, next) {
+app.get('/produtos',  function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -201,7 +198,7 @@ app.get('/produtos', cors(corsOptions), function (req, res, next) {
     });
 })
 
-app.get('/sticms', cors(corsOptions), function (req, res, next) {
+app.get('/sticms',  function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -220,7 +217,7 @@ app.get('/sticms', cors(corsOptions), function (req, res, next) {
     });
 })
 
-app.get('/itepedidos/:pedido', cors(corsOptions), function (req, res, next) {
+app.get('/itepedidos/:pedido',  function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -245,7 +242,7 @@ app.get('/itepedidos/:pedido', cors(corsOptions), function (req, res, next) {
 })
 
 
-app.get('/cpg', cors(corsOptions), function (req, res, next) {
+app.get('/cpg',  function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -269,7 +266,7 @@ app.get('/cpg', cors(corsOptions), function (req, res, next) {
 
 
 
-app.get('/gerapk/:nomepk', cors(corsOptions), function (req, res, next) {
+app.get('/gerapk/:nomepk',  function (req, res, next) {
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
             throw err;
@@ -288,7 +285,7 @@ app.get('/gerapk/:nomepk', cors(corsOptions), function (req, res, next) {
 })
 
 
-app.get('/criaitem/:table/:fields/:values', cors(corsOptions), function (req, res, next) {
+app.get('/criaitem/:table/:fields/:values',  function (req, res, next) {
     Firebird.attach(optionsfb, function(err, db) {
         let sql = 'INSERT INTO '+req.params['table']+' ('+req.params['fields'];
         sql = sql+') values ('+req.params['values']+')';
@@ -303,7 +300,7 @@ app.get('/criaitem/:table/:fields/:values', cors(corsOptions), function (req, re
     });
 });
 
-app.get('/atualizaitem/:table/:fieldsnvalues/:where', cors(corsOptions), function (req, res, next) {
+app.get('/atualizaitem/:table/:fieldsnvalues/:where',  function (req, res, next) {
     Firebird.attach(optionsfb, function(err, db) {
         let sql = 'UPDATE '+req.params['table']+' SET '+req.params['fieldsnvalues'];
         sql = sql+' WHERE '+req.params['where'];
@@ -319,7 +316,7 @@ app.get('/atualizaitem/:table/:fieldsnvalues/:where', cors(corsOptions), functio
 });
 
 
-app.get('/create/:command', cors(corsOptions), function (req, res, next) {
+app.get('/create/:command',  function (req, res, next) {
     console.log('entrou')
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -338,7 +335,7 @@ app.get('/create/:command', cors(corsOptions), function (req, res, next) {
     });
 })
 
-app.get('/produtos', cors(corsOptions), function (req, res, next) {
+app.get('/produtos',  function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -358,7 +355,7 @@ app.get('/produtos', cors(corsOptions), function (req, res, next) {
     });
 })
 
-app.get('/asdd', cors(corsOptions), function (req, res, next) {
+app.get('/asdd',  function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -379,7 +376,7 @@ app.get('/asdd', cors(corsOptions), function (req, res, next) {
     });
 })
 
-app.get('/asd', cors(corsOptions), function (req, res, next) {
+app.get('/asd',  function (req, res, next) {
     
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
@@ -406,7 +403,7 @@ app.get('/asd', cors(corsOptions), function (req, res, next) {
 
 
 
-app.get('/login/:user/:password', cors(corsOptions), function (req, res, next) {
+app.get('/login/:user/:password',  function (req, res, next) {
     
     let crypto = CryptoJS.MD5(req.params['password'])
     let senha = crypto.toString()
