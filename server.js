@@ -26,7 +26,7 @@
 const optionsfb = {
     host: '187.44.93.73',
     port: 3050,
-    database: 'C:/react/dados/DADOS.FDB',
+    database: 'C:/react/dados/DADOS2.FDB',
     user: 'SYSDBA',
     password: 'masterkey',
     lowercase_keys: false, // set to true to lowercase keys
@@ -37,11 +37,18 @@ const optionsfb = {
 let app = require('express')()
 let http = require('http').Server(app)
 let cors = require('cors')
+const fs = require('fs');
 let port = process.env.PORT || 3001
 let Firebird = require('node-firebird');
 let CryptoJS = require('crypto-js');
 const { StringDecoder } = require('string_decoder');
 const decoder = new StringDecoder('utf8');
+var sread = require('stream').Readable;
+var stream = sread();
+
+var swrite = require('stream').Writable;
+var wstream = swrite();
+
 
 
 
@@ -160,6 +167,8 @@ app.get('/api/pedidos/:user',  function (req, res, next) {
     });
 })
 
+
+
 function campoVarChar (campo, tamanho){
     let x ='trim(cast('+campo+' as varchar('+tamanho+') character SET UTF8)) '+campo
     return x
@@ -170,21 +179,57 @@ function campoDate (campo){
     return x
 }
 
-app.get('/api/produtos',  function (req, res, next) {
+// app.get('/api/produtos',  function (req, res, next) {
     
+//     Firebird.attach(optionsfb, function(err, db) {
+//         if (err)
+//             throw err;                        
+
+//         let sql = 'select first 10000 PK_PRO, trim(cast(CODIGO_REPRESENTADA as varchar(20) character SET UTF8)) CODIGO_REPRESENTADA, trim(cast(NOME_REPRESENTADA as varchar(100) character SET UTF8)) NOME_REPRESENTADA, trim(cast(CLASSIFICACAO_FISCAL as varchar(10) character SET UTF8)) CLASSIFICACAO_FISCAL, '+
+//         'trim(cast(CODIGO_BARRAS as varchar(20) character SET UTF8)) CODIGO_BARRAS, IPI, PRECO_VENDA_LISTA, PRECO_REGIAO_1, PRECO_REGIAO_2, PRECO_REGIAO_3, PRECO_REGIAO_4, '+
+//         'PRECO_VENDA_PROMO, PRECO_PROM_REGIAO_1, PRECO_PROM_REGIAO_2, PRECO_PROM_REGIAO_3,PRECO_PROM_REGIAO_4, PERC_DESC_PROMO, '+ 
+//         campoDate('DATA_VALID_PROMO')+', trim(cast(OBS_PROMOCIONAL as varchar(200) character SET UTF8)) OBS_PROMOCIONAL, '+campoDate('DATA_ATUALIZACAO_PRECOS')+' from PRODUTOS where ATIVO='+db.escape('S')+' order by NOME_REPRESENTADA, CODIGO_REPRESENTADA ';
+        
+
+//         db.query(sql, function(err, result) {
+//             // IMPORTANT: close the connection
+//             if (err)
+//                 throw err;
+
+//             db.detach();
+//             res.json(result)
+//         });
+
+//     });
+// })
+
+function isEmpty(obj) {
+    for(var key in obj) {
+        if(obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
+
+app.get('/api/produtos',  function (req, res, next) {
+    // console.log(req.query)
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
-            throw err;                        
+            throw err;             
+        
 
-        let sql = 'select PK_PRO, trim(cast(CODIGO_REPRESENTADA as varchar(20) character SET UTF8)) CODIGO_REPRESENTADA, trim(cast(NOME_REPRESENTADA as varchar(100) character SET UTF8)) NOME_REPRESENTADA, trim(cast(CLASSIFICACAO_FISCAL as varchar(10) character SET UTF8)) CLASSIFICACAO_FISCAL, '+
+
+        let sql = isEmpty(req.query) ? 'select count(pk_pro) from produtos where ATIVO='+db.escape('S') :  'select first '+req.query.first+' skip '+req.query.skip+' PK_PRO, trim(cast(CODIGO_REPRESENTADA as varchar(20) character SET UTF8)) CODIGO_REPRESENTADA, trim(cast(NOME_REPRESENTADA as varchar(100) character SET UTF8)) NOME_REPRESENTADA, trim(cast(CLASSIFICACAO_FISCAL as varchar(10) character SET UTF8)) CLASSIFICACAO_FISCAL, '+
         'trim(cast(CODIGO_BARRAS as varchar(20) character SET UTF8)) CODIGO_BARRAS, IPI, PRECO_VENDA_LISTA, PRECO_REGIAO_1, PRECO_REGIAO_2, PRECO_REGIAO_3, PRECO_REGIAO_4, '+
         'PRECO_VENDA_PROMO, PRECO_PROM_REGIAO_1, PRECO_PROM_REGIAO_2, PRECO_PROM_REGIAO_3,PRECO_PROM_REGIAO_4, PERC_DESC_PROMO, '+ 
         campoDate('DATA_VALID_PROMO')+', trim(cast(OBS_PROMOCIONAL as varchar(200) character SET UTF8)) OBS_PROMOCIONAL, '+campoDate('DATA_ATUALIZACAO_PRECOS')+' from PRODUTOS where ATIVO='+db.escape('S')+' order by NOME_REPRESENTADA, CODIGO_REPRESENTADA ';
         
 
+
         db.query(sql, function(err, result) {
             // IMPORTANT: close the connection
-      
+            if (err)
+                throw err;
 
             db.detach();
             res.json(result)
@@ -192,25 +237,55 @@ app.get('/api/produtos',  function (req, res, next) {
 
     });
 })
+
+
+
 
 app.get('/api/sticms',  function (req, res, next) {
-    
+    // console.log(req.query)
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
-            throw err;                        
+            throw err;             
+        
 
-        let sql = 'select PK_STI, '+campoVarChar('ORIGEM',2)+', FK_PRO, FK_ESTDESTINO, '+campoVarChar('SIMPLES_NACIONAL', 1)+', PERCENTUAL_ST, FK_ESTORIGEM from ST_ICMS'
+
+        let sql = isEmpty(req.query) ? 'select count(pk_sti) from ST_ICMS' :  'select first '+req.query.first+' skip '+req.query.skip+' PK_STI, '+campoVarChar('ORIGEM',2)+', FK_PRO, FK_ESTDESTINO, '+campoVarChar('SIMPLES_NACIONAL', 1)+', PERCENTUAL_ST, FK_ESTORIGEM from ST_ICMS';
+        
+
 
         db.query(sql, function(err, result) {
             // IMPORTANT: close the connection
-      
-            // console.log(result)
+            if (err)
+                throw err;
+
             db.detach();
             res.json(result)
         });
 
     });
 })
+
+
+
+
+// app.get('/api/sticms',  function (req, res, next) {
+    
+//     Firebird.attach(optionsfb, function(err, db) {
+//         if (err)
+//             throw err;                        
+
+//         let sql = 'select PK_STI, '+campoVarChar('ORIGEM',2)+', FK_PRO, FK_ESTDESTINO, '+campoVarChar('SIMPLES_NACIONAL', 1)+', PERCENTUAL_ST, FK_ESTORIGEM from ST_ICMS where PK_STI=3'
+
+//         db.query(sql, function(err, result) {
+//             // IMPORTANT: close the connection
+      
+//             // console.log(result)
+//             db.detach();
+//             res.json(result)
+//         });
+
+//     });
+// })
 
 
 
@@ -268,17 +343,27 @@ app.get('/api/gerapk/:nomepk',  function (req, res, next) {
     Firebird.attach(optionsfb, function(err, db) {
         if (err)
             throw err;
-         db.query('update controle set valor=(valor+1) where campo = '+db.escape(req.params['nomepk']), function(err, result) {
-            // IMPORTANT: close the connection
-            // console.log(result)
-            db.query('select valor from controle where campo = '+db.escape(req.params['nomepk']), function(err, result) {
+        if (req.params['nomepk'] === 'NUMWEB') {
+            db.query('select max(NUMWEB) valor from pedidos_venda', function(err, result) {
                 // IMPORTANT: close the connection
                 // console.log(result)
                 res.json(result)
                 db.detach();
+            });            
+        }
+        else {
+            db.query('update controle set valor=(valor+1) where campo = '+db.escape(req.params['nomepk']), function(err, result) {
+                // IMPORTANT: close the connection
+                // console.log(result)
+                db.query('select valor from controle where campo = '+db.escape(req.params['nomepk']), function(err, result) {
+                    // IMPORTANT: close the connection
+                    // console.log(result)
+                    res.json(result)
+                    db.detach();
+                });
+                
             });
-            
-        });
+        }
     });
 })
 
@@ -287,6 +372,32 @@ app.get('/api/criaitem/:table/:fields/:values',  function (req, res, next) {
     Firebird.attach(optionsfb, function(err, db) {
         let sql = 'INSERT INTO '+req.params['table']+' ('+req.params['fields'];
         sql = sql+') values ('+req.params['values']+')';
+        console.log(sql)
+        if (err)
+            throw err;
+        db.query(sql, function(err, result) {
+                res.json(result)
+                db.detach();
+        });
+            
+    });
+});
+
+
+app.get('/api/deletaitem/:table/:pkname/:pk',  function (req, res, next) {
+    Firebird.attach(optionsfb, function(err, db) {
+        if (req.params['table'] = 'pedidos_venda') {
+            let limpaitens = 'DELETE FROM itens_ped_venda WHERE FK_PED='+req.params['pk'];
+            console.log(limpaitens)
+            if (err)
+                throw err;
+            db.query(limpaitens, function(err, result) {
+                    res.json(result)
+                    db.detach();
+            });
+
+        }
+        let sql = 'DELETE FROM '+req.params['table']+' WHERE '+req.params['pkname']+'='+req.params['pk'];
         console.log(sql)
         if (err)
             throw err;
