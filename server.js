@@ -386,7 +386,7 @@ app.get('/api/criaitem/:table/:fields/:values',  function (req, res, next) {
 
 app.get('/api/deletaitem/:table/:pkname/:pk',  function (req, res, next) {
     Firebird.attach(optionsfb, function(err, db) {
-        if (req.params['table'] = 'pedidos_venda') {
+        if (req.params['table'] === 'pedidos_venda') {
             let limpaitens = 'DELETE FROM itens_ped_venda WHERE FK_PED='+req.params['pk'];
             console.log(limpaitens)
             if (err)
