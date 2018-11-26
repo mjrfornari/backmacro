@@ -267,6 +267,205 @@ app.get('/api/sticms',  function (req, res, next) {
 
 
 
+app.get('/api/startSync',  function (req, res, next) {
+    try {
+        if (!isEmpty(req.query)) {
+            date = new Date ()
+            name = date.toISOString().substring(0, 10).split('-').join('');
+            sync = {
+                qty: {
+                    create: 0,
+                    update: 0,
+                    delete: 0
+                },
+                create: [],
+                update: [],
+                delete: []
+            }
+            if (!fs.existsSync('sync_log')){
+                fs.mkdirSync('sync_log');
+            }
+            arquivo = JSON.stringify(sync)
+            fs.writeFileSync('sync_log/sync_'+req.query.user+'_'+name+'.json', arquivo, 'utf8');
+            res.json('sync_'+req.query.user+'_'+name)
+            console.log('Sync stared: '+'sync_'+req.query.user+'_'+name)
+        } else {
+            res.status(404).end();
+        }
+    } 
+    catch (err) {
+        res.status(404).end();
+    }
+})
+
+
+app.get('/api/identifySync',  function (req, res, next) {
+    try {
+        if (!isEmpty(req.query)) {
+            date = new Date ()
+            name = date.toISOString().substring(0, 10).split('-').join('');
+            fs.readFile('sync_log/sync_'+req.query.user+'_'+name+'.json', 'utf8', (err, data) => {
+                if (err) throw err;
+                sync = JSON.parse(data)
+                sync.qty.create = req.query.create
+                sync.qty.update = req.query.update
+                sync.qty.delete = req.query.delete
+                sync.create = []
+                sync.update = []
+                sync.delete = []
+                arquivo = JSON.stringify(sync)
+                res.json(sync.qty)
+                fs.writeFileSync('sync_log/sync_'+req.query.user+'_'+name+'.json', arquivo, 'utf8');
+            })
+        } else {
+            res.status(404).end();
+        }
+    } 
+    catch (err) {
+        res.status(404).end();
+    }
+})
+
+app.get('/api/sendSQL',  function (req, res, next) {
+    try {
+        if (!isEmpty(req.query)) {
+            date = new Date ()
+            name = date.toISOString().substring(0, 10).split('-').join('');
+            fs.readFile('sync_log/sync_'+req.query.user+'_'+name+'.json', 'utf8', (err, data) => {
+                if (err) throw err;
+                sync = JSON.parse(data)
+                sync[req.query.type].push(req.query.sql)
+                console.log(req.query.sql)
+                arquivo = JSON.stringify(sync)
+                res.json(sync)
+                fs.writeFileSync('sync_log/sync_'+req.query.user+'_'+name+'.json', arquivo, 'utf8');
+            })
+        } else {
+            res.status(404).end();
+        }
+    } 
+    catch (err) {
+        res.status(404).end();
+    }
+})
+
+
+async function asyncForEach(array, callback) {
+  for (let index = 0; index < array.length; index++) {
+    await callback(array[index], index, array);
+  }
+}
+
+async function sendItemsDB(sync, transaction){
+    return new Promise (async (resolve) => {
+        await asyncForEach(sync.create, async (item) => {
+            await transaction.query(item, [],function(err, result) {
+                console.log(item)
+                if (err) {
+                    console.log(err)
+                    console.log('b')
+                    transaction.rollback();
+                    return;
+                } else {
+                    
+                    console.log('a')
+                }
+
+            })
+            
+        })
+
+        await asyncForEach(sync.update, async (item) => {
+            await transaction.query(item, [], function(err, result) {
+                console.log(item)
+                if (err) {
+                    console.log(err)
+                    console.log('2')
+                    transaction.rollback();
+                    return;
+                } else {
+                    // console.log(item)
+                    console.log('1')
+                }
+
+            })
+        })
+
+        await asyncForEach(sync.delete, async (item) => {
+            await transaction.query(item,[], function(err, result) {
+                console.log(item)
+                if (err) {
+                    console.log(err)
+                    console.log('y')
+                    transaction.rollback();
+                    return;
+                } else {
+                    // console.log(item)
+                    console.log('x')
+                }
+            })
+            
+        })
+
+        resolve()
+    })
+
+}
+
+
+app.get('/api/startTransaction',  function (req, res, next) {
+    try {
+        if (!isEmpty(req.query)) {
+            date = new Date ()
+            name = date.toISOString().substring(0, 10).split('-').join('');
+            fs.readFile('sync_log/sync_'+req.query.user+'_'+name+'.json', 'utf8', (err, data) => {
+                if (err) throw err;
+                sync = JSON.parse(data)
+
+                if (Number(sync.qty.create) !== Number(sync.create.length)) throw 'Create'
+                if (Number(sync.qty.update) !== Number(sync.update.length)) throw 'Update'
+                if (Number(sync.qty.delete) !== Number(sync.delete.length)) throw 'Delete'
+
+                Firebird.attach(optionsfb, function(err, db) {
+                    if (err)
+                        throw err;                        
+                    
+                    
+                    db.transaction(Firebird.ISOLATION_READ_UNCOMMITTED, async function(err, transaction) {
+                        console.log(sync.create.length, sync.update.length, sync.delete.length)
+                        
+                        sendItemsDB(sync, transaction).then((res) => {
+                            transaction.commit(function(err) {
+                                if (err)
+                                    transaction.rollback();
+                                else
+                                    db.detach();
+                            });
+                        })
+
+                        
+                        
+                        
+
+                    });
+
+                });
+                // fs.writeFileSync('sync_log/sync_'+req.query.user+'_'+name+'.json', arquivo, 'utf8');
+            })
+        } else {
+            res.status(404).end();
+        }
+    } 
+    catch (err) {
+        console.log(err)
+        res.status(404).end();
+    }
+})
+
+
+
+
+
 
 // app.get('/api/sticms',  function (req, res, next) {
     
@@ -386,24 +585,19 @@ app.get('/api/criaitem/:table/:fields/:values',  function (req, res, next) {
 
 app.get('/api/deletaitem/:table/:pkname/:pk',  function (req, res, next) {
     Firebird.attach(optionsfb, function(err, db) {
+        let limpaitens = 'DELETE FROM itens_ped_venda WHERE FK_PED=0'
         if (req.params['table'] === 'pedidos_venda') {
-            let limpaitens = 'DELETE FROM itens_ped_venda WHERE FK_PED='+req.params['pk'];
-            console.log(limpaitens)
-            if (err)
-                throw err;
-            db.query(limpaitens, function(err, result) {
-                    res.json(result)
-                    db.detach();
-            });
-
+             limpaitens = 'DELETE FROM itens_ped_venda WHERE FK_PED='+req.params['pk'];
         }
         let sql = 'DELETE FROM '+req.params['table']+' WHERE '+req.params['pkname']+'='+req.params['pk'];
         console.log(sql)
         if (err)
             throw err;
-        db.query(sql, function(err, result) {
+        db.query(limpaitens, function(err, result) {
+            db.query(sql, function(err, result) {
                 res.json(result)
                 db.detach();
+            });
         });
             
     });
@@ -423,6 +617,11 @@ app.get('/api/atualizaitem/:table/:fieldsnvalues/:where',  function (req, res, n
             
     });
 });
+
+app.get('/api/testquery',  function (req, res, next) {
+    console.log(req.query.test)
+    res.json(req.query.test)
+})
 
 
 app.get('/api/create/:command',  function (req, res, next) {
