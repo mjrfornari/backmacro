@@ -356,60 +356,55 @@ async function asyncForEach(array, callback) {
   }
 }
 
-async function sendItemsDB(sync, transaction){
+async function commitTransaction(transaction, db){
     return new Promise (async (resolve) => {
-        await asyncForEach(sync.create, async (item) => {
-            await transaction.query(item, [],function(err, result) {
-                console.log(item)
+        console.log('commit')
+        transaction.commit(function(err) {
+                if (err){
+                    transaction.rollback();
+                    db.detach();
+                    resolve('Rollback executed')
+                }
+                else{
+                    db.detach();
+                    resolve('Commited!')
+                }
+                    
+        });
+        
+    })
+
+}
+
+
+
+function sendTransaction(sync, transaction){
+    return new Promise (async (resolve) => {
+        let count = 0
+        if (sync.length === 0){
+            resolve('Done')
+        }
+        for(let i of sync){
+            count = count+1
+            await transaction.query(i, [],function(err, result) {
+                console.log(i)
                 if (err) {
                     console.log(err)
                     console.log('b')
                     transaction.rollback();
-                    return;
+                    resolve('Rollback executed')
                 } else {
                     
                     console.log('a')
                 }
-
-            })
-            
-        })
-
-        await asyncForEach(sync.update, async (item) => {
-            await transaction.query(item, [], function(err, result) {
-                console.log(item)
-                if (err) {
-                    console.log(err)
-                    console.log('2')
-                    transaction.rollback();
-                    return;
-                } else {
-                    // console.log(item)
-                    console.log('1')
+                if (count === sync.length){
+                    resolve('Done')
                 }
 
             })
-        })
-
-        await asyncForEach(sync.delete, async (item) => {
-            await transaction.query(item,[], function(err, result) {
-                console.log(item)
-                if (err) {
-                    console.log(err)
-                    console.log('y')
-                    transaction.rollback();
-                    return;
-                } else {
-                    // console.log(item)
-                    console.log('x')
-                }
-            })
-            
-        })
-
-        resolve()
+        }
+        
     })
-
 }
 
 
@@ -422,9 +417,9 @@ app.get('/api/startTransaction',  function (req, res, next) {
                 if (err) throw err;
                 sync = JSON.parse(data)
 
-                if (Number(sync.qty.create) !== Number(sync.create.length)) throw 'Create'
-                if (Number(sync.qty.update) !== Number(sync.update.length)) throw 'Update'
-                if (Number(sync.qty.delete) !== Number(sync.delete.length)) throw 'Delete'
+                if (Number(sync.qty.create) !== Number(sync.create.length)) throw "Create";
+                if (Number(sync.qty.update) !== Number(sync.update.length)) throw "Update";
+                if (Number(sync.qty.delete) !== Number(sync.delete.length)) throw "Delete";
 
                 Firebird.attach(optionsfb, function(err, db) {
                     if (err)
@@ -433,32 +428,34 @@ app.get('/api/startTransaction',  function (req, res, next) {
                     
                     db.transaction(Firebird.ISOLATION_READ_UNCOMMITTED, async function(err, transaction) {
                         console.log(sync.create.length, sync.update.length, sync.delete.length)
-                        
-                        sendItemsDB(sync, transaction).then((res) => {
-                            transaction.commit(function(err) {
-                                if (err)
-                                    transaction.rollback();
-                                else
-                                    db.detach();
-                            });
+                        sendTransaction(sync.create, transaction).then(async (resolve) => {
+                            sendTransaction(sync.update, transaction).then(async (resolve)=>{
+                                sendTransaction(sync.delete, transaction).then(async (resolve)=>{
+                                    commitTransaction(transaction, db).then(async (resolve)=>{
+                                        res.json(resolve)
+
+                                        fs.unlinkSync('sync_log/sync_'+req.query.user+'_'+name+'.json',function(err){
+                                                if(err) return console.log(err);
+                                                console.log('file deleted successfully');
+                                        });  
+                                    })
+                                })
+                            })
                         })
-
-                        
-                        
-                        
-
                     });
 
                 });
                 // fs.writeFileSync('sync_log/sync_'+req.query.user+'_'+name+'.json', arquivo, 'utf8');
             })
         } else {
-            res.status(404).end();
+            res.json('Rollback executed')
+            // res.status(404).end();
         }
     } 
     catch (err) {
         console.log(err)
-        res.status(404).end();
+        res.json('Rollback executed')
+        // res.status(404).end();
     }
 })
 
