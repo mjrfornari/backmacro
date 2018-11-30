@@ -34,10 +34,12 @@ const optionsfb = {
     pageSize: 16384       // default when creating database
 }
 
+let PDFDocument = require('pdfkit')
 let app = require('express')()
 let http = require('http').Server(app)
 let cors = require('cors')
 const fs = require('fs');
+let Report = require('fluentReports').Report;
 let port = process.env.PORT || 3001
 let Firebird = require('node-firebird');
 let CryptoJS = require('crypto-js');
@@ -48,7 +50,6 @@ var stream = sread();
 
 var swrite = require('stream').Writable;
 var wstream = swrite();
-
 
 
 
@@ -76,6 +77,145 @@ var corsOptions = {
 }
 
 
+async function gerapdf(name) {
+    return new Promise (async (resolve)=>{
+
+
+     // Run Sales Invoice
+        /* globals Report, pipeStream, displayReport */
+
+        
+
+        var detail = function (x, r) {
+            x.band([
+                {data: r.description, width: 240},
+                {data: r.qty, width: 60, align: 3},
+                {data: r.price, width: 70, align: 3},
+                {data: r.amount, width: 90, align: 3},
+                {data: r.annual, width: 70, align: 3}
+            ], {x: 30});
+        };
+
+        var productTypeHeader = function (x, r) {
+            x.fontBold();
+            x.band([
+                {data: r.type, width: 240, fontBold: true}
+            ], {x: 20});
+            x.fontNormal();
+        };
+
+        var productTypeFooter = function (x, r) {
+            x.fontBold();
+            x.band([
+                {data: r.type + ' Total:', width: 130, align: 3},
+                {data: x.totals.amount, width: 90, align: 3}
+            ], {x: 270});
+            x.fontNormal();
+        };
+
+        var proposalHeader = function (x, r) {
+            var fSize = 9;
+            x.print('Some address in Duncan, OK 73533', {x: 20, fontsize: fSize});
+            x.print(name, {x: 40, y: 70, fontSize: fSize + 19, fontBold: true});
+            x.print('THIS IS NOT AN INVOICE', {x: 40, y: 100, fontsize: fSize + 4, fontBold: true});
+            x.print('Questions? Please call us.', {x: 40, y: 150, fontsize: fSize});
+            x.band([{data: 'Proposal #:', width: 100}, {data: "12345", width: 100, align: "left", fontSize: 9}], {
+                x: 400,
+                y: 60
+            });
+            x.band([{data: 'Date Prepared:', width: 100}, {data: r.date, width: 100, fontSize: 9}], {x: 400});
+            x.band([{data: 'Prepared By:', width: 100}, {data: "Jake Snow", width: 100, fontSize: 9}], {x: 400});
+            x.band([{data: 'Prepared For:', width: 100}], {x: 400});
+            x.fontSize(9);
+
+            if (r.name) {
+                x.band([{data: r.name, width: 150}], {x: 410});
+            }
+            if (r.address_1) {
+                x.band([{data: r.address_1, width: 150}], {x: 410});
+            }
+            if (r.address_2) {
+                x.band([{data: r.address_2, width: 150}], {x: 410});
+            }
+            if (r.city) {
+                x.band([{data: r.city + ", " + r.state + " " + r.zip, width: 150}], {x: 410});
+            }
+
+            x.fontSize(8);
+            x.print('This quote is good for 60 days from the date prepared. Product availability is subject to change without notice. Due to rapid changes in technology, ' +
+            'and to help us keep our prices competitive, we request that you appropriate an additional 5-10% of the hardware shown on the proposal to compensate ' +
+            'for possible price fluctuations between the date this proposal was prepared and the date you place your order.  Once a proposal has been approved and  ' +
+            'hardware ordered, returned goods are subject to a 15% restocking fee.', {x: 40, y: 175, width: 540});
+            x.newline();
+            x.print('Any travel fees quoted on this proposal may be reduced to reflect actual travel expenses.', {x: 40});
+            x.newline();
+            x.fontSize(11);
+            x.band([
+                {data: 'Description', width: 250},
+                {data: 'Qty', width: 60, align: 3},
+                {data: 'Price', width: 70, align: 3},
+                {data: 'Ext. Price', width: 90, align: 3},
+                {data: 'Annual', width: 70, align: 3}
+            ], {x: 0});
+            x.bandLine(1);
+        };
+
+        var proposalFooter = function (x) {
+            x.fontSize(7.5);
+            x.print('To place an order for the goods and services provided by us, please either contact us to place your order or fax a copy ' +
+            'of your PO to 999-555-1212', {x: 40, width: 570});
+            x.print('Please call us if you have any other questions about how to order. Thank you for your business!', {
+                x: 40,
+                width: 570
+            });
+        };
+
+        console.log(name)
+        if (!fs.existsSync('pedidos')){
+            fs.mkdirSync('pedidos');
+        }
+        var report = new Report('pedidos/'+name+'.pdf').data(primary_data);
+
+
+        report.margins(20)
+            .detail(detail);
+
+        // See you can separate it; and chain however you need too
+        report.groupBy("no")
+            .header(proposalHeader)
+            .footer(proposalFooter)
+            .groupBy("product.product_type")
+            .sum("amount")
+            .header(productTypeHeader)
+            .footer(productTypeFooter);
+
+        // Run the Report
+        // displayReport is predefined to make it display in the browser
+        console.log('Render')
+        await report.render((err, name)=>{console.log(name);resolve(name)});
+        
+        
+    })
+}
+
+app.get('/api/gerapdf',  async function (req, res, next) {
+    if (!isEmpty(req.query)) {
+        await gerapdf(req.query.ped)
+        fs.readFile('pedidos/'+req.query.ped+'.pdf', function (err,data){
+            res.download('pedidos/'+req.query.ped+'.pdf', req.query.ped+'.pdf', function(err){
+                if (err){
+                    console.log(err)
+                } else {
+                    fs.unlinkSync('pedidos/'+req.query.ped+'.pdf')
+                }
+            })
+        });
+    }
+    
+})
+
+
+
 
 app.get('/api/clientes/:user',  function (req, res, next) {
 
@@ -94,7 +234,7 @@ app.get('/api/clientes/:user',  function (req, res, next) {
       
             
             db.detach();
-            res.json(result)
+            res.json(result); res.end();
         });
 
     });
@@ -111,7 +251,7 @@ app.get('/api/descontolog',  function (req, res, next) {
             // IMPORTANT: close the connection
             
             db.detach();
-            res.json(result)
+            res.json(result); res.end();
         });
 
     });
@@ -131,7 +271,7 @@ app.get('/api/cidades',  function (req, res, next) {
       
             
             db.detach();
-            res.json(result)
+            res.json(result); res.end();
         });
 
     });
@@ -161,7 +301,7 @@ app.get('/api/pedidos/:user',  function (req, res, next) {
       
             // console.log(result)
             db.detach();
-            res.json(result)
+            res.json(result); res.end();
         });
 
     });
@@ -197,7 +337,7 @@ function campoDate (campo){
 //                 throw err;
 
 //             db.detach();
-//             res.json(result)
+//             res.json(result); res.end();
 //         });
 
 //     });
@@ -232,7 +372,7 @@ app.get('/api/produtos',  function (req, res, next) {
                 throw err;
 
             db.detach();
-            res.json(result)
+            res.json(result); res.end();
         });
 
     });
@@ -259,7 +399,7 @@ app.get('/api/sticms',  function (req, res, next) {
                 throw err;
 
             db.detach();
-            res.json(result)
+            res.json(result); res.end();
         });
 
     });
@@ -385,18 +525,18 @@ function sendTransaction(sync, transaction){
             resolve('Done')
         }
         for(let i of sync){
-            count = count+1
             await transaction.query(i, [],function(err, result) {
+                count = count+1
                 console.log(i)
                 if (err) {
                     console.log(err)
                     console.log('b')
                     transaction.rollback();
-                    resolve('Rollback executed')
                 } else {
                     
                     console.log('a')
                 }
+                console.log(count, sync.length, 'transaction')
                 if (count === sync.length){
                     resolve('Done')
                 }
@@ -428,10 +568,16 @@ app.get('/api/startTransaction',  function (req, res, next) {
                     
                     db.transaction(Firebird.ISOLATION_READ_UNCOMMITTED, async function(err, transaction) {
                         console.log(sync.create.length, sync.update.length, sync.delete.length)
-                        sendTransaction(sync.create, transaction).then(async (resolve) => {
-                            sendTransaction(sync.update, transaction).then(async (resolve)=>{
-                                sendTransaction(sync.delete, transaction).then(async (resolve)=>{
-                                    commitTransaction(transaction, db).then(async (resolve)=>{
+                        await sendTransaction(sync.create, transaction)
+                        console.log('Created')
+                        // .then(async (resolve) => {
+                        await sendTransaction(sync.update, transaction)
+                        console.log('Update')
+                        // .then(async (resolve)=>{
+                        await sendTransaction(sync.delete, transaction)
+                        console.log('Delete')
+                        // .then(async (resolve)=>{
+                        commitTransaction(transaction, db).then(async (resolve)=>{
                                         res.json(resolve)
 
                                         fs.unlinkSync('sync_log/sync_'+req.query.user+'_'+name+'.json',function(err){
@@ -439,9 +585,9 @@ app.get('/api/startTransaction',  function (req, res, next) {
                                                 console.log('file deleted successfully');
                                         });  
                                     })
-                                })
-                            })
-                        })
+                                // })
+                            // })
+                        // })
                     });
 
                 });
@@ -477,7 +623,7 @@ app.get('/api/startTransaction',  function (req, res, next) {
       
 //             // console.log(result)
 //             db.detach();
-//             res.json(result)
+//             res.json(result); res.end();
 //         });
 
 //     });
@@ -492,7 +638,7 @@ app.get('/api/itepedidos/:pedido',  function (req, res, next) {
         if (err)
             throw err;                        
 
-        let sql = 'select IPE.PK_IPE, IPE.FK_PED, IPE.FK_PRO, trim(cast(PRO.CODIGO_REPRESENTADA as varchar(20) character SET UTF8)) CODIGOPRO, trim(cast(NOME_REPRESENTADA as varchar(100) character SET UTF8)) DESCRICAOPRO, IPE.QUANTIDADE, IPE.VALOR, IPE.DESCONTO1, IPE.DESCONTO2, IPE.DESCONTO3, '+
+        let sql = 'select IPE.PK_IPE, IPE.FK_PED, IPE.FK_PRO, trim(cast(PRO.CODIGO_REPRESENTADA as varchar(20) character SET UTF8)) CODIGOPRO, trim(cast(NOME_MACROPECAS as varchar(100) character SET UTF8)) DESCRICAOPRO, IPE.QUANTIDADE, IPE.VALOR, IPE.DESCONTO1, IPE.DESCONTO2, IPE.DESCONTO3, '+
                 'trim(cast(IPE.OBSERVACAO as varchar(100) character SET UTF8)) OBSERVACAO, IPE.CONTROLE, IPE.IPI, IPE.PERC_STICMS, IPE.VALOR_STICMS, (IPE.QUANTIDADE*IPE.VALOR*(IPE.DESCONTO1/100)) as TOTAL '+
                 'from ITENS_PED_VENDA IPE '+
                 'join PRODUTOS PRO on PRO.PK_PRO = IPE.FK_PRO '+
@@ -504,7 +650,7 @@ app.get('/api/itepedidos/:pedido',  function (req, res, next) {
       
             // console.log(result)
             db.detach();
-            res.json(result)
+            res.json(result); res.end();
         });
 
     });
@@ -527,7 +673,7 @@ app.get('/api/cpg',  function (req, res, next) {
       
             // console.log(result)
             db.detach();
-            res.json(result)
+            res.json(result); res.end();
         });
 
     });
@@ -543,7 +689,7 @@ app.get('/api/gerapk/:nomepk',  function (req, res, next) {
             db.query('select max(NUMWEB) valor from pedidos_venda', function(err, result) {
                 // IMPORTANT: close the connection
                 // console.log(result)
-                res.json(result)
+                res.json(result); res.end();
                 db.detach();
             });            
         }
@@ -554,7 +700,7 @@ app.get('/api/gerapk/:nomepk',  function (req, res, next) {
                 db.query('select valor from controle where campo = '+db.escape(req.params['nomepk']), function(err, result) {
                     // IMPORTANT: close the connection
                     // console.log(result)
-                    res.json(result)
+                    res.json(result); res.end();
                     db.detach();
                 });
                 
@@ -572,7 +718,7 @@ app.get('/api/criaitem/:table/:fields/:values',  function (req, res, next) {
         if (err)
             throw err;
         db.query(sql, function(err, result) {
-                res.json(result)
+                res.json(result); res.end();
                 db.detach();
         });
             
@@ -592,7 +738,7 @@ app.get('/api/deletaitem/:table/:pkname/:pk',  function (req, res, next) {
             throw err;
         db.query(limpaitens, function(err, result) {
             db.query(sql, function(err, result) {
-                res.json(result)
+                res.json(result); res.end();
                 db.detach();
             });
         });
@@ -608,7 +754,7 @@ app.get('/api/atualizaitem/:table/:fieldsnvalues/:where',  function (req, res, n
         if (err)
             throw err;
         db.query(sql, function(err, result) {
-                res.json(result)
+                res.json(result); res.end();
                 db.detach();
         });
             
@@ -632,7 +778,7 @@ app.get('/api/create/:command',  function (req, res, next) {
             db.query('select valor from controle where campo = '+db.escape('PK_CLI'), function(err, result) {
                 // IMPORTANT: close the connection
                 console.log(result)
-                res.json(result)
+                res.json(result); res.end();
                 db.detach();
             });
             
@@ -656,7 +802,7 @@ app.get('/api/asdd',  function (req, res, next) {
       
             
             db.detach();
-            res.json(result)
+            res.json(result); res.end();
         });
 
     });
@@ -677,7 +823,7 @@ app.get('/api/asd',  function (req, res, next) {
       
             
             db.detach();
-            res.json(result)
+            res.json(result); res.end();
         });
 
     
@@ -709,7 +855,8 @@ app.get('/api/login/:user/:password',  function (req, res, next) {
             console.log('cpf')
             console.log(result) 
             db.detach();
-            res.json(result)
+            res.json(result); 
+            res.end();
         });}
         else if  (req.params['user'].length == 14) {
             let sql = 'SELECT PK_VEN FROM VENDEDORES where CNPJ=' +db.escape(req.params['user'])+' and senha='+db.escape(req.params['password']);
@@ -720,9 +867,11 @@ app.get('/api/login/:user/:password',  function (req, res, next) {
             console.log('cnpj') 
             console.log(result)           
             db.detach();
-            res.json(result)
+            res.json(result); 
+            res.end();
         });
         } else {res.json([])
+            res.end();
         db.detach();}
     });
     
