@@ -1,15 +1,15 @@
 // create server connection
 
-const optionsfb = {
-    host: 'servidor',
-    port: 3050,
-    database: 'C:/delphus/delphus/BancosFB/Macropecas/DADOS.FDB',
-    user: 'SYSDBA',
-    password: 'masterkey',
-    lowercase_keys: false, // set to true to lowercase keys
-    role: null,            // default
-    pageSize: 16384       // default when creating database
-}
+// const optionsfb = {
+//     host: 'servidor',
+//     port: 3050,
+//     database: 'C:/delphus/delphus/BancosFB/Macropecas/DADOS.FDB',
+//     user: 'SYSDBA',
+//     password: 'masterkey',
+//     lowercase_keys: false, // set to true to lowercase keys
+//     role: null,            // default
+//     pageSize: 16384       // default when creating database
+// }
 
 
 // const optionsfb = {
@@ -23,16 +23,16 @@ const optionsfb = {
 //     pageSize: 16384       // default when creating database
 // }
 
-// const optionsfb = {
-//     host: '187.44.93.73',
-//     port: 3050,
-//     database: 'C:/react/dados/DADOS2.FDB',
-//     user: 'SYSDBA',
-//     password: 'masterkey',
-//     lowercase_keys: false, // set to true to lowercase keys
-//     role: null,            // default
-//     pageSize: 16384       // default when creating database
-// }
+const optionsfb = {
+    host: '187.44.93.73',
+    port: 3050,
+    database: 'C:/react/dados/DADOS2.FDB',
+    user: 'SYSDBA',
+    password: 'masterkey',
+    lowercase_keys: false, // set to true to lowercase keys
+    role: null,            // default
+    pageSize: 16384       // default when creating database
+}
 
 let PDFDocument = require('pdfkit')
 let app = require('express')()
@@ -52,7 +52,13 @@ var swrite = require('stream').Writable;
 var wstream = swrite();
 
 
-
+function dataISOtoDefault(data) {
+    let day, month, year = ''
+    year = data.substr(0,4)
+    month = data.substr(5,2)
+    day = data.substr(8,2)
+    return (day+'/'+month+'/'+year)
+}
 
 
 function ab2str(buf) {
@@ -89,9 +95,10 @@ async function gerapdf(ped, user) {
                     'PED.DATA, PED.VALOR_CALCULADO, PED.VALOR_INFORMADO, trim(cast(PED.OBSERVACAO as varchar(5000) character SET UTF8)) OBSERVACAO, '+
                     'trim(cast(PED.ORCAMENTO as char(1) character SET UTF8)) ORCAMENTO, cast(PED.DATA_ENVIO as date) DATA_ENVIO, PED.NUMPED, PED.NUMORC, '+
                     'trim(cast(PED.ENVIADO as char(1) character SET UTF8)) ENVIADO, trim(cast(PED.IMPORTACAO as char(1) character SET UTF8)) IMPORTACAO,'+
-                    'trim(cast(PED.STATUS as char(1) character SET UTF8)) STATUS, trim(cast(PED.WEB as char(1) character SET UTF8)) WEB,'+
+                    'trim(cast(PED.STATUS as char(1) character SET UTF8)) STATUS, VEN.RAZAO_SOC VENDEDOR,trim(cast(PED.WEB as char(1) character SET UTF8)) WEB,'+
                     'PED.DESCONTO1, PED.DESCONTO2, PED.DESCONTO3 '+
                     'from PEDIDOS_VENDA PED '+
+                    'join VENDEDORES VEN on VEN.PK_VEN = PED.FK_VEN '+
                     'join CLIENTES CLI on CLI.PK_CLI = PED.FK_CLI '+
                     'join COND_PAG CPG on CPG.PK_CPG = PED.FK_CPG '+
                     'WHERE PK_PED='+db.escape(ped);
@@ -100,123 +107,126 @@ async function gerapdf(ped, user) {
             db.query(sql, function(err, result) {
                 // IMPORTANT: close the connection
                 let sql = 'select IPE.PK_IPE, IPE.FK_PED, IPE.FK_PRO, trim(cast(PRO.CODIGO_REPRESENTADA as varchar(20) character SET UTF8)) CODIGOPRO, trim(cast(NOME_MACROPECAS as varchar(100) character SET UTF8)) DESCRICAOPRO, IPE.QUANTIDADE, IPE.VALOR, IPE.DESCONTO1, IPE.DESCONTO2, IPE.DESCONTO3, '+
-                    'trim(cast(IPE.OBSERVACAO as varchar(100) character SET UTF8)) OBSERVACAO, IPE.CONTROLE, IPE.IPI, IPE.PERC_STICMS, IPE.VALOR_STICMS, (IPE.QUANTIDADE*IPE.VALOR*(IPE.DESCONTO1/100)) as TOTAL '+
+                    'trim(cast(IPE.OBSERVACAO as varchar(100) character SET UTF8)) OBSERVACAO, IPE.CONTROLE, IPE.IPI, IPE.PERC_STICMS, IPE.VALOR_STICMS, (IPE.QUANTIDADE*IPE.VALOR) as VALOR_TOTAL '+
                     'from ITENS_PED_VENDA IPE '+
                     'join PRODUTOS PRO on PRO.PK_PRO = IPE.FK_PRO '+
                     'WHERE IPE.FK_PED='+db.escape(ped);
             // console.log(sql)
-                pedido = result
+                let pedido = result
+                // console.log(pedido)
 
                 db.query(sql, async function(err, result) {
                     // IMPORTANT: close the connection
             
                     // console.log(result)
                     db.detach();
-
-                    itepedido = result
-
+                    
+                    let itepedido = result
+                    console.log(pedido)
+                    itepedido.forEach((element, id) => {
+                        element.VALOR_IPI = ((element.IPI || 0)/100)*element.VALOR
+                    })
                     primary_data = itepedido
 
                     var detail = function (x, r) {
                         x.band([
-                            {data: r.CODIGOPRO, width: 240},
-                            {data: r.DESCRICAOPRO, width: 60, align: 3},
-                            {data: r.VALOR, width: 70, align: 3},
-                            {data: r.QUANTIDADE, width: 90, align: 3}
+                            {data: r.CODIGOPRO, width: 65, align: 1, fontSize: 9},
+                            {data: r.DESCRICAOPRO, width: 230, align: 1, fontSize: 9},
+                            {data: r.QUANTIDADE, width: 55, align: 3, fontSize: 9},
+                            {data: (r.VALOR/r.QUANTIDADE).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(",","*").replace(".",",").replace("*","."), width: 75, align: 3, fontSize: 9},
+                            {data: (r.VALOR).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(",","*").replace(".",",").replace("*","."), width: 90, align: 3, fontSize: 9},
+                            {data: (r.IPI || 0).toFixed(2).replace(",","*").replace(".",",").replace("*","."), width: 30, align: 3, fontSize: 9},
+                            {data: (r.VALOR_IPI || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(",","*").replace(".",",").replace("*","."), width: 65, align: 3, fontSize: 9},
+                            {data: (r.PERC_STICMS || 0).toFixed(2).replace(",","*").replace(".",",").replace("*","."), width: 30, align: 3, fontSize: 9},
+                            {data: ((r.VALOR_STICMS || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(",","*").replace(".",",").replace("*","."), width: 65, align: 3, fontSize: 9}, 
+                            {data: (r.VALOR+(r.VALOR_STICMS || 0)+(((r.IPI || 0)/100)*r.VALOR)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(",","*").replace(".",",").replace("*","."), width: 90, align: 3, fontSize: 9},                        
                         ], {x: 30});
                     };
 
-                    var productTypeHeader = function (x, r) {
-            x.fontBold();
-            x.band([
-                {data: r.type, width: 240, fontBold: true}
-            ], {x: 20});
-            x.fontNormal();
-        };
-
-        var productTypeFooter = function (x, r) {
-            x.fontBold();
-            x.band([
-                {data: r.type + ' Total:', width: 130, align: 3},
-                {data: x.totals.amount, width: 90, align: 3}
-            ], {x: 270});
-            x.fontNormal();
-        };
 
         var proposalHeader = function (x, r) {
             var fSize = 9;
-            x.print(ped, {x: 40, y: 70, fontSize: fSize + 19, fontBold: true});
-            x.print('THIS IS NOT AN INVOICE', {x: 40, y: 100, fontsize: fSize + 4, fontBold: true});
-            x.print('Questions? Please call us.', {x: 40, y: 150, fontsize: fSize});
-            x.band([{data: 'Proposal #:', width: 100}, {data: "12345", width: 100, align: "left", fontSize: 9}], {
-                x: 400,
-                y: 60
+            x.image('macropecasLogo.png', {width: 270, x: 50, y: 50});
+            x.print('COMERCIAL MACROPEÇAS LTDA - CNPJ: 00.785.999/001-21', {x: 50, y: 120, width: 270, align: "center", fontSize: fSize});
+
+            x.band([{data: pedido.ORCAMENTO==='S' ? 'Nº Orçamento:' : 'Nº Pedido:', width: 80}, {data: pedido[0].NUMWEB, width: 150, align: "right", fontSize: 9}], {
+                x: 500,
+                y: 68
             });
-            x.band([{data: 'Date Prepared:', width: 100}, {data: r.date, width: 100, fontSize: 9}], {x: 400});
-            x.band([{data: 'Prepared By:', width: 100}, {data: "Jake Snow", width: 100, fontSize: 9}], {x: 400});
-            x.band([{data: 'Prepared For:', width: 100}], {x: 400});
-            x.fontSize(9);
-
-            if (r.name) {
-                x.band([{data: r.name, width: 150}], {x: 410});
-            }
-            if (r.address_1) {
-                x.band([{data: r.address_1, width: 150}], {x: 410});
-            }
-            if (r.address_2) {
-                x.band([{data: r.address_2, width: 150}], {x: 410});
-            }
-            if (r.city) {
-                x.band([{data: r.city + ", " + r.state + " " + r.zip, width: 150}], {x: 410});
-            }
-
-            x.fontSize(8);
-            x.print('This quote is good for 60 days from the date prepared. Product availability is subject to change without notice. Due to rapid changes in technology, ' +
-            'and to help us keep our prices competitive, we request that you appropriate an additional 5-10% of the hardware shown on the proposal to compensate ' +
-            'for possible price fluctuations between the date this proposal was prepared and the date you place your order.  Once a proposal has been approved and  ' +
-            'hardware ordered, returned goods are subject to a 15% restocking fee.', {x: 40, y: 175, width: 540});
+            x.band([{data: 'Data:', width: 80}, {data: dataISOtoDefault(pedido[0].DATA.toISOString()), width: 150,align: "right", fontSize: 9}], {x: 500});
+            x.band([{data: 'Vendedor(a):', width: 80}, {data: pedido[0].VENDEDOR, width: 150,align: "right", fontSize: 9}], {x: 500});
+            x.band([{data: 'Cliente:', width: 80}, {data: pedido[0].RAZAO_SOCIAL, width: 150,align: "right", fontSize: 9}], {x: 500});
             x.newline();
-            x.print('Any travel fees quoted on this proposal may be reduced to reflect actual travel expenses.', {x: 40});
+            x.newline();
+            x.print( pedido.ORCAMENTO==='S' ? 'ORÇAMENTO DE VENDA' : 'PEDIDO DE VENDA', {align: "center", fontSize: fSize+12} )
+            x.newline();
             x.newline();
             x.fontSize(11);
             x.band([
-                {data: 'Código', width: 250},
-                {data: 'Descrição', width: 60, align: 3},
-                {data: 'Preço', width: 70, align: 3},
-                {data: 'Quantidade', width: 90, align: 3},
+                {data: 'Código', width: 65, align: 1, fontSize: 9},
+                {data: 'Descrição', width: 230, align: 1, fontSize: 9},
+                {data: 'Quantidade', width: 55, align: 1, fontSize: 9},
+                {data: 'Preço Unit.', width: 75, align: 1, fontSize: 9},
+                {data: 'Valor Total', width: 90, align: 1, fontSize: 9},
+                {data: '% IPI', width: 30, align: 1, fontSize: 9},
+                {data: 'Valor IPI', width: 65, align: 1, fontSize: 9},
+                {data: '% ST ICMS', width: 30, align: 1, fontSize: 9},
+                {data: 'Valor ST ICMS', width: 65, align: 1, fontSize: 9},
+                {data: 'Valor Total c/ Impostos', width: 90, align: 1, fontSize: 9},
                 // {data: 'Annual', width: 70, align: 3}
-            ], {x: 0});
+            ], {x: 30});
             x.bandLine(1);
+            x.newline();
+            
         };
 
         var proposalFooter = function (x) {
-            x.fontSize(7.5);
-            x.print('To place an order for the goods and services provided by us, please either contact us to place your order or fax a copy ' +
-            'of your PO to 999-555-1212', {x: 40, width: 570});
-            x.print('Please call us if you have any other questions about how to order. Thank you for your business!', {
-                x: 40,
-                width: 570
-            });
+            x.newline();
+            x.fontBold();
+            // x.print('Valor Total s/ Impostos:'+x.totals.VALOR.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), { x:5,  width: 200, height: 10, align: 'center', fontSize: 9, fill: '#b5c6e0'});
+            // x.print('Valor Total IPI:'+x.totals.VALOR.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), { x:210,  width: 200, height: 10, align: 'center', fontSize: 9, fill: '#b5c6e0'});
+            // x.print('Valor Total ST_ICMS:'+x.totals.VALOR.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), { x:415,  width: 200, height: 10, align: 'center', fontSize: 9, fill: '#b5c6e0'});
+            // x.print('Valor Total c/ Impostos:'+x.totals.VALOR.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), { x:620,  width: 200, height: 10, align: 'center', fontSize: 9, fill: '#b5c6e0'});
+            // x.print('Totais:', { x:20,  width: 795, height: 10, align: 'center', fontSize: 9, fill: '#b5c6e0'});
+            x.band([
+                {data: 'TOTAIS', width: 560, align: 'center', fontSize: 11},
+            ], {x: 147, fill: '#b5c6e0'});
+            x.band([
+                {data: 'Produtos: '+x.totals.VALOR.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(",","*").replace(".",",").replace("*","."), width: 140, align: 'center', fontSize: 9},
+                {data: 'IPI: '+x.totals.VALOR.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(",","*").replace(".",",").replace("*","."), width: 140, align: 'center', fontSize: 9},
+                {data: 'ST ICMS: '+x.totals.VALOR.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(",","*").replace(".",",").replace("*","."), width: 140, align: 'center', fontSize: 9},
+                {data: (pedido.ORCAMENTO==='S' ? 'Orçamento: ' : 'Pedido: ')+x.totals.VALOR.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(",","*").replace(".",",").replace("*","."), width: 140, align: 'center', fontSize: 9},
+            ], {x: 147, fill: '#b5c6e0'});
+            x.newline();
+            
+            x.fontNormal();
+        };
+
+        var endereco = function (x) {
+            x.fontNormal();
+            x.line(25, 570, 820, 570);
+            x.print(['RUA GUTEMBERG, 151 - SALAS 903 A 907 - PORTO ALEGRE - RS - CEP: 91310-010 - TEL: (51) 3083-0300 - (51) 0800-722-2222 - EMAIL: MACROPECAS@MACROPECAS.COM.BR'], { fontSize: 7, y: 580, width: 800, x: 25, align: 'center'});
         };
 
         console.log(ped)
         if (!fs.existsSync('pedidos')){
             fs.mkdirSync('pedidos');
         }
-        var report = new Report('pedidos/'+ped+'.pdf').data(primary_data);
+        var report = new Report('pedidos/'+ped+'.pdf', {landscape: true, paper: 'A4'}).data(primary_data);
 
 
-        report.margins(20)
+        report.margins(-5)
             .detail(detail);
 
         // See you can separate it; and chain however you need too
         report.groupBy("no")
             .header(proposalHeader)
-            .footer(proposalFooter)
             .groupBy("product.product_type")
-            .sum("amount")
-            .header(productTypeHeader)
-            .footer(productTypeFooter);
+            .sum("VALOR_IPI")
+            .sum("VALOR")
+            .sum("VALOR_STICMS")
+            .footer(proposalFooter)
+            .pageFooter(endereco)
 
         // Run the Report
         // displayReport is predefined to make it display in the browser
@@ -238,132 +248,12 @@ async function gerapdf(ped, user) {
 }
 
 
-async function gerapdfdefault(name) {
-    return new Promise (async (resolve)=>{
-
-
-     // Run Sales Invoice
-        /* globals Report, pipeStream, displayReport */
-        primary_data = {
-            data: 'teste'
-        }
-        
-
-        var detail = function (x, r) {
-            x.band([
-                {data: r.description, width: 240},
-                {data: r.qty, width: 60, align: 3},
-                {data: r.price, width: 70, align: 3},
-                {data: r.amount, width: 90, align: 3},
-                {data: r.annual, width: 70, align: 3}
-            ], {x: 30});
-        };
-
-        var productTypeHeader = function (x, r) {
-            x.fontBold();
-            x.band([
-                {data: r.type, width: 240, fontBold: true}
-            ], {x: 20});
-            x.fontNormal();
-        };
-
-        var productTypeFooter = function (x, r) {
-            x.fontBold();
-            x.band([
-                {data: r.type + ' Total:', width: 130, align: 3},
-                {data: x.totals.amount, width: 90, align: 3}
-            ], {x: 270});
-            x.fontNormal();
-        };
-
-        var proposalHeader = function (x, r) {
-            var fSize = 9;
-            x.print(name, {x: 40, y: 70, fontSize: fSize + 19, fontBold: true});
-            x.print('THIS IS NOT AN INVOICE', {x: 40, y: 100, fontsize: fSize + 4, fontBold: true});
-            x.print('Questions? Please call us.', {x: 40, y: 150, fontsize: fSize});
-            x.band([{data: 'Proposal #:', width: 100}, {data: "12345", width: 100, align: "left", fontSize: 9}], {
-                x: 400,
-                y: 60
-            });
-            x.band([{data: 'Date Prepared:', width: 100}, {data: r.date, width: 100, fontSize: 9}], {x: 400});
-            x.band([{data: 'Prepared By:', width: 100}, {data: "Jake Snow", width: 100, fontSize: 9}], {x: 400});
-            x.band([{data: 'Prepared For:', width: 100}], {x: 400});
-            x.fontSize(9);
-
-            if (r.name) {
-                x.band([{data: r.name, width: 150}], {x: 410});
-            }
-            if (r.address_1) {
-                x.band([{data: r.address_1, width: 150}], {x: 410});
-            }
-            if (r.address_2) {
-                x.band([{data: r.address_2, width: 150}], {x: 410});
-            }
-            if (r.city) {
-                x.band([{data: r.city + ", " + r.state + " " + r.zip, width: 150}], {x: 410});
-            }
-
-            x.fontSize(8);
-            x.print('This quote is good for 60 days from the date prepared. Product availability is subject to change without notice. Due to rapid changes in technology, ' +
-            'and to help us keep our prices competitive, we request that you appropriate an additional 5-10% of the hardware shown on the proposal to compensate ' +
-            'for possible price fluctuations between the date this proposal was prepared and the date you place your order.  Once a proposal has been approved and  ' +
-            'hardware ordered, returned goods are subject to a 15% restocking fee.', {x: 40, y: 175, width: 540});
-            x.newline();
-            x.print('Any travel fees quoted on this proposal may be reduced to reflect actual travel expenses.', {x: 40});
-            x.newline();
-            x.fontSize(11);
-            x.band([
-                {data: 'Description', width: 250},
-                {data: 'Qty', width: 60, align: 3},
-                {data: 'Price', width: 70, align: 3},
-                {data: 'Ext. Price', width: 90, align: 3},
-                {data: 'Annual', width: 70, align: 3}
-            ], {x: 0});
-            x.bandLine(1);
-        };
-
-        var proposalFooter = function (x) {
-            x.fontSize(7.5);
-            x.print('To place an order for the goods and services provided by us, please either contact us to place your order or fax a copy ' +
-            'of your PO to 999-555-1212', {x: 40, width: 570});
-            x.print('Please call us if you have any other questions about how to order. Thank you for your business!', {
-                x: 40,
-                width: 570
-            });
-        };
-
-        console.log(name)
-        if (!fs.existsSync('pedidos')){
-            fs.mkdirSync('pedidos');
-        }
-        var report = new Report('pedidos/'+name+'.pdf').data(primary_data);
-
-
-        report.margins(20)
-            .detail(detail);
-
-        // See you can separate it; and chain however you need too
-        report.groupBy("no")
-            .header(proposalHeader)
-            .footer(proposalFooter)
-            .groupBy("product.product_type")
-            .sum("amount")
-            .header(productTypeHeader)
-            .footer(productTypeFooter);
-
-        // Run the Report
-        // displayReport is predefined to make it display in the browser
-        console.log('Render')
-        await report.render((err, name)=>{console.log(name);resolve(name)});
-        
-        
-    })
-}
-
 app.get('/api/gerapdf',  async function (req, res, next) {
     if (!isEmpty(req.query)) {
         await gerapdf(req.query.ped, req.query.user)
         fs.readFile('pedidos/'+req.query.ped+'.pdf', function (err,data){
+            // res.contentType("application/pdf");
+            // res.send(data);
             res.download('pedidos/'+req.query.ped+'.pdf', req.query.ped+'.pdf', function(err){
                 if (err){
                     console.log(err)
@@ -1010,27 +900,27 @@ app.get('/api/login/:user/:password',  function (req, res, next) {
         if  (req.params['user'].length == 11) {
 
             let sql = 'SELECT PK_VEN FROM VENDEDORES where CPF=' +db.escape(req.params['user'])+' and senha_web='+db.escape(req.params['password']);
-
+            console.log(sql)
             db.query(sql, function(err, result) {
             // IMPORTANT: close the connection
       
-            console.log('cpf')
-            console.log(result) 
-            db.detach();
-            res.json(result); 
-            res.end();
+                console.log('cpf')
+                console.log(result) 
+                db.detach();
+                res.json(result); 
+                res.end();
         });}
         else if  (req.params['user'].length == 14) {
             let sql = 'SELECT PK_VEN FROM VENDEDORES where CNPJ=' +db.escape(req.params['user'])+' and senha_web='+db.escape(req.params['password']);
-            
+            console.log(sql)
             db.query(sql, function(err, result) {
             // IMPORTANT: close the connection
       
-            console.log('cnpj') 
-            console.log(result)           
-            db.detach();
-            res.json(result); 
-            res.end();
+                console.log('cnpj') 
+                console.log(result)           
+                db.detach();
+                res.json(result); 
+                res.end();
         });
         } else {res.json([])
             res.end();
