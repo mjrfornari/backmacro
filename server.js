@@ -1,15 +1,15 @@
 // create server connection
 
-const optionsfb = {
-    host: 'servidor',
-    port: 3050,
-    database: 'C:/delphus/delphus/BancosFB/Macropecas/DADOS.FDB',
-    user: 'SYSDBA',
-    password: 'masterkey',
-    lowercase_keys: false, // set to true to lowercase keys
-    role: null,            // default
-    pageSize: 16384       // default when creating database
-}
+// const optionsfb = {
+//     host: 'servidor',
+//     port: 3050,
+//     database: 'C:/delphus/delphus/BancosFB/Macropecas/DADOS.FDB',
+//     user: 'SYSDBA',
+//     password: 'masterkey',
+//     lowercase_keys: false, // set to true to lowercase keys
+//     role: null,            // default
+//     pageSize: 16384       // default when creating database
+// }
 
 
 // const optionsfb = {
@@ -23,16 +23,16 @@ const optionsfb = {
 //     pageSize: 16384       // default when creating database
 // }
 
-// const optionsfb = {
-//     host: '187.44.93.73',
-//     port: 3050,
-//     database: 'C:/react/dados/DADOS2.FDB',
-//     user: 'SYSDBA',
-//     password: 'masterkey',
-//     lowercase_keys: false, // set to true to lowercase keys
-//     role: null,            // default
-//     pageSize: 16384       // default when creating database
-// }
+const optionsfb = {
+    host: '187.44.93.73',
+    port: 3050,
+    database: 'C:/react/dados/DADOS2.FDB',
+    user: 'SYSDBA',
+    password: 'masterkey',
+    lowercase_keys: false, // set to true to lowercase keys
+    role: null,            // default
+    pageSize: 16384       // default when creating database
+}
 
 let PDFDocument = require('pdfkit')
 let app = require('express')()
@@ -360,6 +360,20 @@ async function gerapdfdefault(name) {
     })
 }
 
+function removeAcento (text)
+{       
+    text = text.toLowerCase();      
+    text = text.replace(new RegExp('[~`´^¨]','gi'), '');                                          
+    text = text.replace(new RegExp('[ÁÀÂÃ]','gi'), 'a');
+    text = text.replace(new RegExp('[ÉÈÊ]','gi'), 'e');
+    text = text.replace(new RegExp('[ÍÌÎ]','gi'), 'i');
+    text = text.replace(new RegExp('[ÓÒÔÕ]','gi'), 'o');
+    text = text.replace(new RegExp('[ÚÙÛ]','gi'), 'u');
+    text = text.replace(new RegExp('[Ç]','gi'), 'c');
+    text = text.toUpperCase();
+    return text;                 
+}
+
 app.get('/api/gerapdf',  async function (req, res, next) {
     if (!isEmpty(req.query)) {
         await gerapdf(req.query.ped, req.query.user)
@@ -582,7 +596,8 @@ app.get('/api/startSync',  function (req, res, next) {
                 },
                 create: [],
                 update: [],
-                delete: []
+                delete: [],
+                steps: []
             }
             if (!fs.existsSync('sync_log')){
                 fs.mkdirSync('sync_log');
@@ -615,6 +630,7 @@ app.get('/api/identifySync',  function (req, res, next) {
                 sync.create = []
                 sync.update = []
                 sync.delete = []
+                sync.steps.push('Quantidade informada')
                 arquivo = JSON.stringify(sync)
                 res.json(sync.qty)
                 fs.writeFileSync('sync_log/sync_'+req.query.user+'_'+name+'.json', arquivo, 'utf8');
@@ -637,6 +653,7 @@ app.get('/api/sendSQL',  function (req, res, next) {
                 if (err) throw err;
                 sync = JSON.parse(data)
                 sync[req.query.type].push(req.query.sql)
+                sync.steps.push(req.query.type+' adicionado')
                 console.log(req.query.sql)
                 arquivo = JSON.stringify(sync)
                 res.json(sync)
@@ -665,7 +682,7 @@ async function commitTransaction(transaction, db){
                 if (err){
                     transaction.rollback();
                     db.detach();
-                    resolve('Rollback executed')
+                    resolve(err)
                 }
                 else{
                     db.detach();
@@ -687,13 +704,15 @@ function sendTransaction(sync, transaction){
             resolve('Done')
         }
         for(let i of sync){
-            await transaction.query(i, [],function(err, result) {
+            console.log(removeAcento(decodeURIComponent(i)).split("''").join("'"))
+            await transaction.query(removeAcento(decodeURIComponent(i)).split("''").join("'"), [],function(err, result) {
                 count = count+1
-                console.log(i)
+                // console.log(i)
                 if (err) {
                     console.log(err)
                     console.log('b')
                     transaction.rollback();
+                    resolve(String(err))
                 } else {
                     
                     console.log('a')
@@ -730,22 +749,35 @@ app.get('/api/startTransaction',  function (req, res, next) {
                     
                     db.transaction(Firebird.ISOLATION_READ_UNCOMMITTED, async function(err, transaction) {
                         console.log(sync.create.length, sync.update.length, sync.delete.length)
-                        await sendTransaction(sync.create, transaction)
+                        await sendTransaction(sync.create, transaction).then((res)=>{
+                            sync.steps.push('Create:')
+                            sync.steps.push(res)
+                        })
                         console.log('Created')
                         // .then(async (resolve) => {
-                        await sendTransaction(sync.update, transaction)
-                        console.log('Update')
+                        await sendTransaction(sync.update, transaction).then((res)=>{
+                            sync.steps.push('Update:')
+                            sync.steps.push(res)
+                        })
+                        console.log('Updated')
                         // .then(async (resolve)=>{
-                        await sendTransaction(sync.delete, transaction)
-                        console.log('Delete')
+                        await sendTransaction(sync.delete, transaction).then((res)=>{
+                            sync.steps.push('Delete:')
+                            sync.steps.push(res)
+                        })
+                        console.log('Deleted')
                         // .then(async (resolve)=>{
                         commitTransaction(transaction, db).then(async (resolve)=>{
                                         res.json(resolve)
-
-                                        fs.unlinkSync('sync_log/sync_'+req.query.user+'_'+name+'.json',function(err){
-                                                if(err) return console.log(err);
-                                                console.log('file deleted successfully');
-                                        });  
+                                        if (resolve === 'Commited!') {
+                                            fs.unlinkSync('sync_log/sync_'+req.query.user+'_'+name+'.json',function(err){
+                                                    if(err) return console.log(err);
+                                                    console.log('file deleted successfully');
+                                            });
+                                        } else {
+                                            arquivo = JSON.stringify(sync)
+                                            fs.writeFileSync('sync_log/sync_'+req.query.user+'_'+name+'.json', arquivo, 'utf8');
+                                        }
                                     })
                                 // })
                             // })
@@ -762,6 +794,14 @@ app.get('/api/startTransaction',  function (req, res, next) {
     } 
     catch (err) {
         console.log(err)
+        let name = date.toISOString().substring(0, 10).split('-').join('');
+        fs.readFile('sync_log/sync_'+req.query.user+'_'+name+'.json', 'utf8', (err, data) => {
+            if (err) throw err;
+            sync = JSON.parse(data)
+            sync.steps.push(err)
+            arquivo = JSON.stringify(sync)
+            fs.writeFileSync('sync_log/sync_'+req.query.user+'_'+name+'.json', arquivo, 'utf8');
+        })
         res.json('Rollback executed')
         // res.status(404).end();
     }
