@@ -16,6 +16,7 @@
     "crypto-js": "^3.1.9-1",
     "express": "^4.16.3",
     "fluentreports": "^1.2.2",
+    "newrelic": "^5.0.0",
     "node-firebird": "^0.8.6",
     "pdfkit": "^0.8.3",
     "socket.io": "^2.1.1",

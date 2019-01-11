@@ -1,3 +1,4 @@
+require('newrelic');
 // create server connection
 
 // const optionsfb = {
@@ -47,6 +48,7 @@ const { StringDecoder } = require('string_decoder');
 const decoder = new StringDecoder('utf8');
 var sread = require('stream').Readable;
 var stream = sread();
+
 
 var swrite = require('stream').Writable;
 var wstream = swrite();
