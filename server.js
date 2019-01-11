@@ -74,7 +74,7 @@ function str2ab(str) {
   return buf;
 }
 
-app.use(cors())
+// app.use(cors())
 
 var whitelist = ['https://192.168.0.254', 'http://localhost:3000']
 var corsOptions = {
